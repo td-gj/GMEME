@@ -11,7 +11,7 @@ hero:
   actions:
     - theme: brand
       text: 🎮 Play Now
-      link: http://localhost:5173
+      link: /
     - theme: alt
       text: 📖 Game Features
       link: /guide/features

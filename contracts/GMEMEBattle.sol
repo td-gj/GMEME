@@ -12,13 +12,17 @@ contract GMEMEBattle is Ownable {
 
     uint256 public constant BET_AMOUNT = 10 * 10**18;
     uint256 public constant VOTE_COST = 6 * 10**16; // 0.06 GMEME
-    uint256 public constant BATTLE_DURATION = 5 minutes;
+    uint256 public battleDuration = 24 hours;
     
     // Rewards
     uint256 public constant WINNER_REWARD = 18 * 10**18;
     uint256 public constant VOTER_WIN_REWARD = 1 * 10**18;
     uint256 public constant VOTER_LOSE_REWARD = 2 * 10**17; // 0.2 GMEME
     uint256 public constant DEV_FEE = 8 * 10**17; // 0.8 GMEME
+
+    function setBattleDuration(uint256 _duration) external onlyOwner {
+        battleDuration = _duration;
+    }
 
     struct Battle {
         uint256 id;
@@ -90,7 +94,7 @@ contract GMEMEBattle is Ownable {
     function vote(uint256 battleId, uint256 side) external {
         Battle storage b = battles[battleId];
         require(!b.ended, "Battle Ended");
-        require(block.timestamp < b.startTime + BATTLE_DURATION, "Time over");
+        require(block.timestamp < b.startTime + battleDuration, "Time over");
         require(side == 1 || side == 2, "Invalid side");
 
         _processVoteCost(msg.sender);
@@ -136,7 +140,7 @@ contract GMEMEBattle is Ownable {
     function endBattle(uint256 battleId) external {
         Battle storage b = battles[battleId];
         require(!b.ended, "Already ended");
-        require(block.timestamp >= b.startTime + BATTLE_DURATION, "Battle still ongoing");
+        require(block.timestamp >= b.startTime + battleDuration, "Battle still ongoing");
 
         b.ended = true;
 
