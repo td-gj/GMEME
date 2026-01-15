@@ -4,6 +4,7 @@ export default defineConfig({
     title: "GMEME Documentation",
     description: "Official documentation for GMEME Web3 Arena",
     titleTemplate: ':title | GMEME Docs',
+    ignoreDeadLinks: true, // Fix build error with localhost links
 
     head: [
         ['link', { rel: 'icon', href: '/favicon.ico' }]
@@ -36,7 +37,7 @@ export default defineConfig({
         ],
 
         socialLinks: [
-            { icon: 'github', link: 'https://github.com/your-repo/gmeme' }
+            { icon: 'github', link: 'https://github.com/td-gj/GMEME' }
         ],
 
         footer: {
