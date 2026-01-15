@@ -391,6 +391,9 @@ function toggleSwapDirection() {
 }
 
 async function handleSwap() {
+    const swapBtn = document.getElementById('swapBtn');
+    const originalText = swapBtn.textContent;
+
     if (!signer) {
         showMessage('Please connect your wallet first', 'error');
         return;
@@ -403,7 +406,9 @@ async function handleSwap() {
     }
 
     try {
-        showMessage(isBuyingGMEME ? 'Processing Buy...' : 'Processing Sell...', 'info');
+        // Disable button and show processing
+        swapBtn.disabled = true;
+        swapBtn.textContent = 'Processing...';
 
         if (isBuyingGMEME) {
             // BUY Logic (POL -> GMEME)
@@ -412,7 +417,7 @@ async function handleSwap() {
             if (feeData.gasPrice) txOptions.gasPrice = feeData.gasPrice;
 
             const tx = await contracts.swap.swapPOLToGMEME(txOptions);
-            showMessage('Buy Transaction submitted...', 'info');
+            swapBtn.textContent = 'Confirming Buy...';
             await tx.wait();
         } else {
             // SELL Logic (GMEME -> POL)
@@ -421,14 +426,14 @@ async function handleSwap() {
             // Check Allowance First
             const allowance = await contracts.token.allowance(userAddress, CONTRACTS.SWAP);
             if (allowance < amountWei) {
-                showMessage('Approving GMEME for Swap...', 'info');
+                swapBtn.textContent = 'Approving...';
                 const approveTx = await contracts.token.approve(CONTRACTS.SWAP, ethers.parseEther('1000000'));
                 await approveTx.wait();
-                showMessage('Approval Confirmed. Swapping...', 'info');
+                swapBtn.textContent = 'Processing Sell...';
             }
 
             const tx = await contracts.swap.swapGMEMEToPOL(amountWei);
-            showMessage('Sell Transaction submitted...', 'info');
+            swapBtn.textContent = 'Confirming Sell...';
             await tx.wait();
         }
 
@@ -439,6 +444,9 @@ async function handleSwap() {
     } catch (error) {
         console.error('Swap error:', error);
         showMessage('Swap failed: ' + (error.reason || error.message), 'error');
+    } finally {
+        swapBtn.disabled = false;
+        swapBtn.textContent = originalText;
     }
 }
 
