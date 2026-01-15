@@ -1,5 +1,8 @@
 // Pinata API Configuration
-const PINATA_JWT = import.meta.env.VITE_PINATA_JWT;
+const PINATA_JWT = (import.meta.env.VITE_PINATA_JWT || "").trim();
+if (!PINATA_JWT) {
+    console.error('CRITICAL: VITE_PINATA_JWT is missing or empty!');
+}
 
 export const PINATA_GATEWAY = "https://ipfs.io/ipfs/";
 
@@ -28,7 +31,9 @@ export async function uploadToPinata(file) {
         });
 
         if (!response.ok) {
-            throw new Error('Failed to upload to Pinata');
+            const errorData = await response.json();
+            console.error('Pinata Detailed Error:', errorData);
+            throw new Error(`Pinata Error: ${errorData.error || response.statusText}`);
         }
 
         const data = await response.json();
@@ -60,7 +65,9 @@ export async function uploadMetadataToPinata(metadata) {
         });
 
         if (!response.ok) {
-            throw new Error('Failed to upload metadata to Pinata');
+            const errorData = await response.json();
+            console.error('Pinata Metadata Detailed Error:', errorData);
+            throw new Error(`Pinata Metadata Error: ${errorData.error || response.statusText}`);
         }
 
         const data = await response.json();
