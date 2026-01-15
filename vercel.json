@@ -1,5 +1,6 @@
 {
     "version": 2,
-    "buildCommand": "cd frontend && npm install && npm run build && cd .. && npm install && npm run docs:build && rm -rf dist && mkdir -p dist/docs && cp -r frontend/dist/* dist/ && cp -r docs/.vitepress/dist/* dist/docs/",
-    "outputDirectory": "dist"
+    "buildCommand": "bash build.sh",
+    "outputDirectory": "dist",
+    "framework": null
 }
