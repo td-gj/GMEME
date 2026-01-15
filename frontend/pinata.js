@@ -32,8 +32,9 @@ export async function uploadToPinata(file) {
 
         if (!response.ok) {
             const errorData = await response.json();
-            console.error('Pinata Detailed Error:', errorData);
-            throw new Error(`Pinata Error: ${errorData.error || response.statusText}`);
+            console.error('Pinata Detailed Error:', JSON.stringify(errorData, null, 2));
+            const errorMsg = typeof errorData.error === 'object' ? JSON.stringify(errorData.error) : (errorData.error || response.statusText);
+            throw new Error(`Pinata Error: ${errorMsg}`);
         }
 
         const data = await response.json();
@@ -66,8 +67,9 @@ export async function uploadMetadataToPinata(metadata) {
 
         if (!response.ok) {
             const errorData = await response.json();
-            console.error('Pinata Metadata Detailed Error:', errorData);
-            throw new Error(`Pinata Metadata Error: ${errorData.error || response.statusText}`);
+            console.error('Pinata Metadata Detailed Error:', JSON.stringify(errorData, null, 2));
+            const errorMsg = typeof errorData.error === 'object' ? JSON.stringify(errorData.error) : (errorData.error || response.statusText);
+            throw new Error(`Pinata Metadata Error: ${errorMsg}`);
         }
 
         const data = await response.json();
