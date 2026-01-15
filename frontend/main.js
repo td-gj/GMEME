@@ -10,6 +10,11 @@ let userAddress = null;
 let contracts = {};
 let uploadedImageHash = null;
 
+// Optimization: Metadata cache
+const fighterCache = {};
+let arenaRefreshTimer = null;
+let countdownInterval = null;
+
 // Global Image Error Handler (Smart Retry)
 window.handleImageError = function (img) {
     const ipfsHash = img.dataset.ipfs;
@@ -123,6 +128,7 @@ async function connectWallet() {
         // Update UI
         updateWalletUI();
         await updateBalances();
+        loadActiveBattles(); // Load arena immediately
 
 
 
@@ -974,39 +980,37 @@ async function loadActiveBattles() {
                         }
                     }
 
-                    // Fetch images and names
+                    // Optimized Fetch images and names
                     let p1Image = '';
                     let p2Image = '';
                     let p1Name = `Fighter #${battle.p1TokenId}`;
                     let p2Name = `Fighter #${battle.p2TokenId}`;
 
-                    try {
-                        const uri1 = await contracts.nft.tokenURI(battle.p1TokenId);
-                        const uri2 = await contracts.nft.tokenURI(battle.p2TokenId);
-
-                        // Use dweb.link as primary (verified working)
-                        const gw = 'https://dweb.link/ipfs/';
-
-                        // Clean URIs
-                        const clean1 = uri1.replace('ipfs://', '');
-                        const clean2 = uri2.replace('ipfs://', '');
-
-                        // Fetch metadata in parallel
-                        const [meta1, meta2] = await Promise.all([
-                            fetch(`${gw}${clean1}`).then(r => r.json()).catch(() => ({})),
-                            fetch(`${gw}${clean2}`).then(r => r.json()).catch(() => ({}))
-                        ]);
-
-                        if (meta1.image) p1Image = meta1.image.replace('ipfs://', gw);
-                        if (meta2.image) p2Image = meta2.image.replace('ipfs://', gw);
-
-                        // Get names
-                        if (meta1.name) p1Name = meta1.name;
-                        if (meta2.name) p2Name = meta2.name;
-
-                    } catch (e) {
-                        console.warn('Battle metadata load failed', e);
+                    async function getFighterData(tokenId) {
+                        if (fighterCache[tokenId]) return fighterCache[tokenId];
+                        try {
+                            const uri = await contracts.nft.tokenURI(tokenId);
+                            const gw = 'https://dweb.link/ipfs/';
+                            const clean = uri.replace('ipfs://', '');
+                            const meta = await fetch(`${gw}${clean}`).then(r => r.json());
+                            const image = meta.image ? meta.image.replace('ipfs://', gw) : '';
+                            const name = meta.name || `Fighter #${tokenId}`;
+                            fighterCache[tokenId] = { image, name };
+                            return fighterCache[tokenId];
+                        } catch (e) {
+                            return { image: '', name: `Fighter #${tokenId}` };
+                        }
                     }
+
+                    const [f1, f2] = await Promise.all([
+                        getFighterData(battle.p1TokenId),
+                        getFighterData(battle.p2TokenId)
+                    ]);
+
+                    p1Image = f1.image;
+                    p1Name = f1.name;
+                    p2Image = f2.image;
+                    p2Name = f2.name;
 
                     battles.push({
                         id: battle.id.toString(),
@@ -1025,12 +1029,25 @@ async function loadActiveBattles() {
                     });
                 }
             } catch (error) {
-                // Battle doesn't exist, skip
                 console.warn(`Error loading battle ${i}:`, error);
             }
         }
 
         displayBattles(battles.reverse());
+
+        // Setup Auto Refresh if not already set
+        if (!arenaRefreshTimer) {
+            arenaRefreshTimer = setInterval(() => {
+                if (document.querySelector('[data-tab="activebattles"]').classList.contains('active')) {
+                    loadActiveBattles();
+                }
+            }, 30000); // 30 sec auto-refresh for votes/new battles
+        }
+
+        // Setup Countdown Interval if not already set
+        if (!countdownInterval) {
+            countdownInterval = setInterval(updateAllTimers, 1000);
+        }
 
     } catch (error) {
         console.error('Error loading battles:', error);
@@ -1058,7 +1075,7 @@ window.viewBattleDetail = function (id) {
     const p1Votes = battle.p1Votes || 0;
     const p2Votes = battle.p2Votes || 0;
     const now = Math.floor(Date.now() / 1000);
-    const timeLeft = Math.max(0, (battle.startTime + 300) - now);
+    const timeLeft = Math.max(0, (battle.startTime + 86400) - now);
     const isActive = !battle.ended && timeLeft > 0;
 
     const fallbackSvg = `data:image/svg+xml,${encodeURIComponent('<svg width="280" height="280" xmlns="http://www.w3.org/2000/svg"><rect width="280" height="280" fill="#333"/><text x="50%" y="50%" font-family="Arial" font-size="24" fill="white" text-anchor="middle" dominant-baseline="middle">?</text></svg>')}`;
@@ -1130,6 +1147,58 @@ window.viewBattleDetail = function (id) {
     window.location.hash = `battle/${id}`;
 };
 
+// NEW: Real-time timer update engine
+function updateAllTimers() {
+    const now = Math.floor(Date.now() / 1000);
+
+    // Update Battle Cards in Arena
+    if (window.loadedBattles) {
+        window.loadedBattles.forEach(battle => {
+            const timeLeft = Math.max(0, (battle.startTime + 86400) - now);
+            const isActive = !battle.ended && timeLeft > 0;
+
+            // Update Card Timers
+            const timerEl = document.querySelector(`#battle-card-${battle.id} .timer-value`);
+            if (timerEl && isActive) {
+                const hours = Math.floor(timeLeft / 3600);
+                const minutes = Math.floor((timeLeft % 3600) / 60);
+                const seconds = timeLeft % 60;
+                timerEl.textContent = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            }
+
+            // If timer just hit zero, we might want to change status text
+            if (timeLeft === 0 && isActive) {
+                const statusEl = document.querySelector(`#battle-card-${battle.id} .battle-status`);
+                if (statusEl) statusEl.textContent = '⏱️ ENDED';
+                // Trigger refresh to get final state
+                setTimeout(loadActiveBattles, 2000);
+            }
+        });
+    }
+
+    // Update Detail View Timer if open
+    const detailView = document.getElementById('battle-detail-view');
+    if (!detailView.classList.contains('hidden')) {
+        const hash = window.location.hash;
+        if (hash.startsWith('#battle/')) {
+            const id = hash.split('/')[1];
+            const battle = window.loadedBattles?.find(b => b.id === id);
+            if (battle) {
+                const timeLeft = Math.max(0, (battle.startTime + 86400) - now);
+                const statusLabel = document.querySelector('#battle-detail-card [style*="color:"]');
+                if (statusLabel) {
+                    if (timeLeft > 0 && !battle.ended) {
+                        statusLabel.textContent = `🔥 BATTLE IN PROGRESS | Ends in ${Math.floor(timeLeft / 3600)}h ${Math.floor((timeLeft % 3600) / 60)}m ${timeLeft % 60}s`;
+                    } else {
+                        statusLabel.textContent = '🏁 BATTLE ENDED';
+                        statusLabel.style.color = '#ef4444';
+                    }
+                }
+            }
+        }
+    }
+}
+
 window.closeBattleDetail = function () {
     document.getElementById('battle-detail-view').classList.add('hidden');
     document.getElementById('activebattles-content').classList.remove('hidden');
@@ -1148,8 +1217,9 @@ function displayBattles(battles) {
 
     list.innerHTML = battles.map(battle => {
         const now = Math.floor(Date.now() / 1000);
-        const timeLeft = Math.max(0, (battle.startTime + 300) - now);
-        const minutes = Math.floor(timeLeft / 60);
+        const timeLeft = Math.max(0, (battle.startTime + 86400) - now);
+        const hours = Math.floor(timeLeft / 3600);
+        const minutes = Math.floor((timeLeft % 3600) / 60);
         const seconds = timeLeft % 60;
         const isActive = !battle.ended && timeLeft > 0;
 
@@ -1173,7 +1243,7 @@ function displayBattles(battles) {
         <div class="battle-fighters">
           <div class="fighter">
             <div class="active-battle-img-container">
-                 <img src="${battle.p1Image || fallbackSvg}" class="active-battle-img" onerror="this.src='${fallbackSvg}'">
+                 <img src="${battle.p1Image || fallbackSvg}" class="active-battle-img" loading="lazy" data-ipfs="${battle.p1Image ? '' : battle.p1TokenId}" onerror="this.src='${fallbackSvg}'">
             </div>
             <div class="fighter-name" style="font-weight: bold; margin-bottom: 0.2rem;">${battle.p1Name}</div>
             <div class="fighter-votes" style="font-size: 1.8rem; font-weight: 800; text-shadow: 0 0 10px rgba(139, 92, 246, 0.5); color: ${winner === 1 && !isActive ? '#10b981' : '#a78bfa'}">
@@ -1185,7 +1255,7 @@ function displayBattles(battles) {
           
           <div class="fighter">
             <div class="active-battle-img-container">
-                 <img src="${battle.p2Image || fallbackSvg}" class="active-battle-img" onerror="this.src='${fallbackSvg}'">
+                 <img src="${battle.p2Image || fallbackSvg}" class="active-battle-img" loading="lazy" data-ipfs="${battle.p2Image ? '' : battle.p2TokenId}" onerror="this.src='${fallbackSvg}'">
             </div>
             <div class="fighter-name" style="font-weight: bold; margin-bottom: 0.2rem;">${battle.p2Name}</div>
             <div class="fighter-votes" style="font-size: 1.8rem; font-weight: 800; text-shadow: 0 0 10px rgba(236, 72, 153, 0.5); color: ${winner === 2 && !isActive ? '#10b981' : '#f472b6'}">
@@ -1197,7 +1267,7 @@ function displayBattles(battles) {
         ${isActive ? `
           <div class="battle-timer">
             <div class="timer-label">Ending in</div>
-            <div class="timer-value">${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}</div>
+            <div class="timer-value">${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}</div>
           </div>
           
           <div class="vote-buttons">
