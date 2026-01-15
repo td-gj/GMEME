@@ -1,5 +1,4 @@
 {
-    "buildCommand": "cd frontend && npm install && npm run build",
-    "outputDirectory": "frontend/dist",
-    "framework": "vite"
+    "buildCommand": "npm install && cd frontend && npm install && npm run build && cd .. && npm run docs:build && mkdir -p frontend/dist/docs && cp -r docs/.vitepress/dist/* frontend/dist/docs/",
+    "outputDirectory": "frontend/dist"
 }
