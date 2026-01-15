@@ -1,6 +1,7 @@
 import { defineConfig } from 'vitepress'
 
 export default defineConfig({
+    base: '/docs/',
     title: "GMEME Documentation",
     description: "Official documentation for GMEME Web3 Arena",
     titleTemplate: ':title | GMEME Docs',
@@ -18,7 +19,7 @@ export default defineConfig({
             { text: 'Home', link: '/' },
             { text: 'Game Features', link: '/guide/features' },
             { text: 'Smart Contracts', link: '/contracts/overview' },
-            { text: 'Play Game', link: 'http://localhost:5173' }
+            { text: 'Play Game', link: '/' }
         ],
 
         sidebar: [
