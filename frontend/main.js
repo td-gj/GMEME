@@ -336,11 +336,11 @@ async function loadLeaderboard() {
             const fallbackImg = `https://api.dicebear.com/7.x/pixel-art/svg?seed=${f.id}`;
 
             return `
-            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); ${rowStyle}">
+            <tr style="border-bottom: 1px solid var(--glass-border); ${rowStyle}">
                 <td style="padding: 1rem; font-weight: bold; font-size: 1.1rem; color: ${rankColor};">${rankDisplay}</td>
                 <td style="padding: 1rem;">
                     <div style="display: flex; align-items: center; gap: 1rem;">
-                        <img src="${f.image || fallbackImg}" style="width: 48px; height: 48px; border-radius: 12px; object-fit: cover; border: 1px solid rgba(255,255,255,0.1);" onerror="this.src='${fallbackImg}'">
+                        <img src="${f.image || fallbackImg}" style="width: 48px; height: 48px; border-radius: 12px; object-fit: cover; border: 1px solid var(--glass-border);" onerror="this.src='${fallbackImg}'">
                         <div>
                             <div style="font-weight: bold;">${f.name}</div>
                             <div style="font-size: 0.8rem; color: var(--text-muted);">ID: #${f.id}</div> 
@@ -1113,7 +1113,7 @@ window.viewBattleDetail = function (id) {
              </div>
         </div>
         
-        <div style="background: rgba(255,255,255,0.03); padding: 2rem; border-radius: 16px; margin-bottom: 2rem; border: 1px solid var(--glass-border);">
+                    <div style="background: var(--bg-glass); padding: 2rem; border-radius: 16px; margin-bottom: 2rem; border: 1px solid var(--glass-border);">
             <h4 style="border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; margin-bottom: 1rem; font-size: 1.2rem;">📊 Battle Statistics</h4>
              <div style="display: flex; justify-content: space-between; margin-bottom: 0.8rem;">
                 <span class="text-muted">Total Prize Pool</span> <span style="color: #10b981; font-weight: bold;">18 GMEME</span>

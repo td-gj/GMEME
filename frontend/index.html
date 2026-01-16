@@ -12,19 +12,20 @@
 <body>
   <div id="app">
     <header>
-      <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 0.5rem;">
-        <!-- Logo Image -->
-        <img src="/G.svg" alt="GMEME Logo"
-          style="height: 180px; width: auto; object-fit: contain; filter: drop-shadow(0 0 20px rgba(139, 92, 246, 0.7));">
+      <div class="logo-container">
+        <div class="logo-glow"></div>
+        <img src="/G.svg" alt="GMEME Logo" class="logo">
       </div>
       <div class="tagline">The Ultimate Web3 Meme Battle Arena</div>
 
       <!-- Social Links -->
-      <div class="social-links"
-        style="display: flex; gap: 20px; justify-content: center; margin-top: 15px; margin-bottom: 5px;">
-        <a href="/docs/" target="_blank" class="social-btn">Docs</a>
-        <a href="https://twitter.com" target="_blank" class="social-btn">X</a>
-        <a href="https://github.com" target="_blank" class="social-btn">GitHub</a>
+      <div class="social-links">
+        <a href="https://www.gmeme-battle.com/docs/" target="_blank" rel="noopener noreferrer" class="social-btn">
+          <span>📚</span> Docs
+        </a>
+        <a href="https://x.com/gmeme_battle" target="_blank" class="social-btn">
+          <span>𝕏</span> X
+        </a>
       </div>
     </header>
 
@@ -60,12 +61,24 @@
 
       <!-- Navigation Tabs -->
       <div class="tabs">
-        <button class="tab active" data-tab="activebattles">Live Arena</button>
-        <button class="tab" data-tab="mynfts">My Collection</button>
-        <button class="tab" data-tab="battle">Join Queue</button>
-        <button class="tab" data-tab="mint">Mint Fighter</button>
-        <button class="tab" data-tab="leaderboard">Leaderboard</button>
-        <button class="tab" data-tab="swap">Swap Token</button>
+        <button class="tab active" data-tab="activebattles">
+          <span>🔥</span> Live Arena
+        </button>
+        <button class="tab" data-tab="mynfts">
+          <span>⚔️</span> My Collection
+        </button>
+        <button class="tab" data-tab="battle">
+          <span>🎯</span> Join Queue
+        </button>
+        <button class="tab" data-tab="mint">
+          <span>💎</span> Mint Fighter
+        </button>
+        <button class="tab" data-tab="leaderboard">
+          <span>🏆</span> Leaderboard
+        </button>
+        <button class="tab" data-tab="swap">
+          <span>🔄</span> Swap Token
+        </button>
       </div>
 
       <!-- Tab Content Area -->
@@ -83,7 +96,7 @@
             <div class="table-container" style="overflow-x: auto;">
               <table style="width: 100%; border-collapse: collapse; text-align: left;">
                 <thead>
-                  <tr style="border-bottom: 2px solid rgba(255,255,255,0.1);">
+                <tr style="border-bottom: 2px solid var(--glass-border);">
                     <th style="padding: 1rem;">Rank</th>
                     <th style="padding: 1rem;">Fighter</th>
                     <th style="padding: 1rem;">ELO</th>
@@ -154,7 +167,7 @@
             </div>
 
             <div class="battle-info"
-              style="margin: 2rem 0; padding: 1.5rem; background: rgba(255,255,255,0.05); border-radius: 12px;">
+              style="margin: 2rem 0; padding: 1.5rem; background: var(--bg-glass); border-radius: 12px;">
               <div class="stat-row" style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
                 <span class="text-muted">Entry Fee:</span>
                 <span class="text-white">10 GMEME</span>
