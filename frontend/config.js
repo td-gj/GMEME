@@ -3,7 +3,7 @@ export const CONTRACTS = {
     TOKEN: '0x7053d3A4725d10365D1Db3cE3d716062941b5cC6',
     NFT: '0x5096ABb4ee9dBd856FCC98e1EE3FB77BE6ad791a',
     SWAP: '0xB9F62b142e0ABA8D2d645F17da0078F303f1eD19',
-    BATTLE: '0x6F801313c4fc3741ef57AdC7b5afA02a7790453f'
+    BATTLE: '0x310e44Df62934335A03718a9Ea3031E06Ed3C2Cb'
 };
 
 // Network configuration
@@ -52,6 +52,8 @@ export const ABIS = {
         "function vote(uint256 battleId, uint256 side)",
         "function endBattle(uint256 battleId)",
         "function battles(uint256) view returns (uint256 id, uint256 p1TokenId, uint256 p2TokenId, address p1Owner, address p2Owner, uint256 startTime, bool ended)",
+        "function getVoteCounts(uint256) view returns (uint256,uint256)",
+        "function getVoteCountsBatch(uint256[]) view returns (uint256[],uint256[])",
         "function nextBattleId() view returns (uint256)",
         "function BET_AMOUNT() view returns (uint256)",
         "function VOTE_COST() view returns (uint256)",

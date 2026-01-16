@@ -2,8 +2,19 @@
 const hre = require("hardhat");
 
 async function main() {
-    const [deployer] = await hre.ethers.getSigners();
+    // Try to get signer from Hardhat (local) first; if none, fall back to PRIVATE_KEY + RPC provider.
+    let deployer;
     const DEV_WALLET = "0x27BE66DdB44074D45B4dCf6aae43e4EB48001010";
+
+    const signers = await hre.ethers.getSigners();
+    if (signers && signers.length > 0) {
+        deployer = signers[0];
+    } else {
+        const pk = process.env.PRIVATE_KEY;
+        if (!pk) throw new Error("No deployer available and PRIVATE_KEY not set in env");
+        const provider = new hre.ethers.providers.JsonRpcProvider(hre.network.config.url);
+        deployer = new hre.ethers.Wallet(pk.startsWith("0x") ? pk : `0x${pk}`, provider);
+    }
 
     console.log("Deploying contracts with the account:", deployer.address);
 

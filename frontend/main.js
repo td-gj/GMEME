@@ -953,31 +953,22 @@ async function loadActiveBattles() {
         const nextBattleId = await contracts.battle.nextBattleId();
         const battles = [];
 
-        // Query Voted events from recent blocks to avoid timeout
-        const currentBlock = await provider.getBlockNumber();
-        const fromBlock = Math.max(0, currentBlock - 10000); // 10k blocks ~6 hours on Polygon
-        const allVoteEvents = await contracts.battle.queryFilter("Voted", fromBlock, "latest");
-
         // Load last 10 battles
         const startId = nextBattleId > 10 ? nextBattleId - 10 : 1;
         for (let i = startId; i < nextBattleId; i++) {
             try {
                 const battle = await contracts.battle.battles(i);
                 if (battle.id > 0) {
-
-                    // Filter votes for this battle from the fetched events
+                    // Get vote counts directly from contract (more reliable than event scan)
                     let p1Votes = 0;
                     let p2Votes = 0;
-
-                    const battleIdNum = Number(battle.id);
-
-                    for (const event of allVoteEvents) {
-                        const eventBattleId = Number(event.args.battleId); // Assuming first arg is battleId
-                        if (eventBattleId === battleIdNum) {
-                            const side = Number(event.args.side);
-                            if (side === 1) p1Votes++;
-                            else if (side === 2) p2Votes++;
-                        }
+                    try {
+                        const counts = await contracts.battle.getVoteCounts(Number(battle.id));
+                        p1Votes = Number(counts[0]);
+                        p2Votes = Number(counts[1]);
+                    } catch (e) {
+                        console.warn('getVoteCounts failed for battle', Number(battle.id), e);
+                        // fallback remains zero
                     }
 
                     // Optimized Fetch images and names
@@ -1030,6 +1021,23 @@ async function loadActiveBattles() {
                 }
             } catch (error) {
                 console.warn(`Error loading battle ${i}:`, error);
+            }
+        }
+
+        // Batch-fetch vote counts for the loaded battles to avoid per-battle RPC calls.
+        if (battles.length > 0) {
+            try {
+                const ids = battles.map(b => Number(b.id));
+                const counts = await contracts.battle.getVoteCountsBatch(ids);
+                // counts[0] = p1 array, counts[1] = p2 array
+                const p1Arr = counts[0];
+                const p2Arr = counts[1];
+                for (let j = 0; j < battles.length; j++) {
+                    battles[j].p1Votes = Number(p1Arr[j] || 0);
+                    battles[j].p2Votes = Number(p2Arr[j] || 0);
+                }
+            } catch (e) {
+                console.warn('getVoteCountsBatch failed:', e);
             }
         }
 

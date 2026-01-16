@@ -203,4 +203,24 @@ contract GMEMEBattle is Ownable {
     function _pseudoRandom(uint256 modulus) internal view returns (uint256) {
         return uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, msg.sender))) % modulus;
     }
+
+    // View helper: return current vote counts for a battle (reads storage)
+    function getVoteCounts(uint256 battleId) external view returns (uint256 p1Votes, uint256 p2Votes) {
+        Battle storage b = battles[battleId];
+        p1Votes = b.p1Voters.length;
+        p2Votes = b.p2Voters.length;
+    }
+
+    // Batch view: return arrays of p1/p2 vote counts for multiple battleIds
+    function getVoteCountsBatch(uint256[] calldata battleIds) external view returns (uint256[] memory p1Votes, uint256[] memory p2Votes) {
+        uint256 len = battleIds.length;
+        p1Votes = new uint256[](len);
+        p2Votes = new uint256[](len);
+
+        for (uint256 i = 0; i < len; i++) {
+            Battle storage b = battles[battleIds[i]];
+            p1Votes[i] = b.p1Voters.length;
+            p2Votes[i] = b.p2Voters.length;
+        }
+    }
 }
