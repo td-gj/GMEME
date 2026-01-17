@@ -1127,10 +1127,13 @@ window.viewBattleDetail = function (id) {
                 <span class="text-muted">Total Prize Pool</span> <span style="color: #10b981; font-weight: bold;">18 GMEME</span>
             </div>
             <div style="display: flex; justify-content: space-between; margin-bottom: 0.8rem;">
-                <span class="text-muted">Voter Rewards Pool</span> <span style="color: #ec4899; font-weight: bold;">1.5 GMEME</span>
+                <span class="text-muted">Voter Win Rewards Pool</span> <span style="color: #ec4899; font-weight: bold;">1 GMEME</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 0.8rem;">
+                <span class="text-muted">Voter Lose Rewards Pool</span> <span style="color: #f59e0b; font-weight: bold;">0.2 GMEME</span>
             </div>
              <div style="display: flex; justify-content: space-between;">
-                <span class="text-muted">Protocol Fee</span> <span class="text-muted">0.5 GMEME</span>
+                <span class="text-muted">Protocol Fee</span> <span class="text-muted">0.8 GMEME</span>
             </div>
         </div>
 
