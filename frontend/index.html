@@ -21,19 +21,74 @@
       <!-- Social Links -->
       <div class="social-links">
         <a href="https://www.gmeme-battle.com/docs/" target="_blank" rel="noopener noreferrer" class="social-btn">
-          <span>📚</span> Docs
+          Docs
         </a>
         <a href="https://x.com/gmeme_battle" target="_blank" class="social-btn">
-          <span>𝕏</span> X
+          X
         </a>
       </div>
     </header>
 
-    <!-- Wallet Info Section -->
-    <div id="walletSection">
-      <div class="wallet-section">
-        <button id="connectWalletBtn" class="btn btn-primary">Connect Wallet</button>
+    <!-- Landing Section -->
+    <div id="walletSection" class="landing-section">
+      <!-- Platform Stats -->
+      <div class="stats-section">
+        <h2 class="stats-title">GMEME Battle Arena</h2>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-content">
+              <h4 class="stat-value" id="totalNFTs">--</h4>
+              <p class="stat-label">Total Fighters</p>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-content">
+              <h4 class="stat-value" id="totalPolRaised">--</h4>
+              <p class="stat-label">Total POL Raised (Swap)</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Progress toward initial supply -->
+        <div class="mint-progress-card">
+          <div class="progress-header">
+            <span class="progress-label">Mint Progress</span>
+            <span id="mintPercent" class="progress-percent">--%</span>
+          </div>
+
+          <div class="progress-track">
+            <div id="mintProgressFill" class="progress-fill"></div>
+          </div>
+
+          <div class="progress-stats">
+            <span id="mintStatsText">-- / -- GMEME remaining</span>
+          </div>
+
+          <div class="progress-footer">
+            <span id="mintUpdated">Last updated: --</span>
+          </div>
+        </div>
       </div>
+
+      <!-- Space Scene (stars + planets) -->
+      <div class="space-scene" aria-hidden="true">
+        <canvas id="starCanvas" class="star-canvas" tabindex="-1" aria-hidden="true"></canvas>
+        <div class="nebula nebula-1"></div>
+        <div class="nebula nebula-2"></div>
+
+        <!-- planets removed: keeping starfield + nebulas only -->
+      </div>
+
+      <!-- Connect Wallet -->
+      <div class="connect-section">
+        <h3>Ready to Battle?</h3>
+        <p>Join thousands of warriors in the ultimate Web3 battle arena</p>
+        <button id="connectWalletBtn" class="connect-button">
+          Connect Wallet
+        </button>
+      </div>
+
+
     </div>
 
     <!-- Authenticated View -->
@@ -61,24 +116,12 @@
 
       <!-- Navigation Tabs -->
       <div class="tabs">
-        <button class="tab active" data-tab="activebattles">
-          <span>🔥</span> Live Arena
-        </button>
-        <button class="tab" data-tab="mynfts">
-          <span>⚔️</span> My Collection
-        </button>
-        <button class="tab" data-tab="battle">
-          <span>🎯</span> Join Queue
-        </button>
-        <button class="tab" data-tab="mint">
-          <span>💎</span> Mint Fighter
-        </button>
-        <button class="tab" data-tab="leaderboard">
-          <span>🏆</span> Leaderboard
-        </button>
-        <button class="tab" data-tab="swap">
-          <span>🔄</span> Swap Token
-        </button>
+        <button class="tab active" data-tab="activebattles">Live Arena</button>
+        <button class="tab" data-tab="mynfts">My Collection</button>
+        <button class="tab" data-tab="battle">Join Queue</button>
+        <button class="tab" data-tab="mint">Mint Fighter</button>
+        <button class="tab" data-tab="leaderboard">Leaderboard</button>
+        <button class="tab" data-tab="swap">Swap Token</button>
       </div>
 
       <!-- Tab Content Area -->
@@ -96,7 +139,7 @@
             <div class="table-container" style="overflow-x: auto;">
               <table style="width: 100%; border-collapse: collapse; text-align: left;">
                 <thead>
-                <tr style="border-bottom: 2px solid var(--glass-border);">
+                  <tr style="border-bottom: 2px solid var(--glass-border);">
                     <th style="padding: 1rem;">Rank</th>
                     <th style="padding: 1rem;">Fighter</th>
                     <th style="padding: 1rem;">ELO</th>

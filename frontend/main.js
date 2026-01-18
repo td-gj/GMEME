@@ -14,6 +14,18 @@ let uploadedImageHash = null;
 const fighterCache = {};
 let arenaRefreshTimer = null;
 let countdownInterval = null;
+let statsRefreshTimer = null;
+
+// Stats cache
+let statsCache = {
+    totalNFTs: null,
+    totalBattles: null,
+    activeBattles: null,
+    totalVolume: null,
+    lastUpdate: null
+};
+// total POL raised in swap
+statsCache.totalPolRaised = null;
 
 // Global Image Error Handler (Smart Retry)
 window.handleImageError = function (img) {
@@ -43,6 +55,7 @@ window.handleImageError = function (img) {
 document.addEventListener('DOMContentLoaded', () => {
     initializeEventListeners();
     checkWalletConnection();
+    loadPlatformStats(); // Load stats immediately
 
     // Check hash for direct link or default tab
     setTimeout(() => {
@@ -55,6 +68,13 @@ document.addEventListener('DOMContentLoaded', () => {
             switchTab('activebattles');
         }
     }, 500);
+
+    // Auto refresh stats every hour
+    statsRefreshTimer = setInterval(loadPlatformStats, 60 * 60 * 1000);
+    // Initialize space scene interactions
+    initializeSpaceScene();
+    // Initialize canvas starfield
+    initializeStarCanvas();
 });
 
 // Event Listeners
@@ -1341,6 +1361,378 @@ window.handleEndBattle = async function (battleId) {
 };
 
 // Message Functions
+// Platform Stats Functions
+async function loadPlatformStats() {
+    try {
+        // Check cache first (valid for 1 hour)
+        const now = Date.now();
+        if (statsCache.lastUpdate && (now - statsCache.lastUpdate) < 60 * 60 * 1000) {
+            updateStatsDisplay();
+            return;
+        }
+
+        // Initialize provider if not exists - prefer injected, fallback to RPC URL
+        if (!provider) {
+            if (typeof window !== 'undefined' && window.ethereum) {
+                provider = new ethers.BrowserProvider(window.ethereum);
+            } else {
+                // fallback to configured RPC (read-only)
+                provider = new ethers.JsonRpcProvider(NETWORK.rpcUrls[0]);
+            }
+        }
+
+        // Initialize contracts
+        if (!contracts.nft) {
+            contracts.nft = new ethers.Contract(CONTRACTS.NFT, ABIS.NFT, provider);
+        }
+        if (!contracts.battle) {
+            contracts.battle = new ethers.Contract(CONTRACTS.BATTLE, ABIS.BATTLE, provider);
+        }
+        if (!contracts.token) {
+            contracts.token = new ethers.Contract(CONTRACTS.TOKEN, ABIS.TOKEN, provider);
+        }
+
+        // Fetch stats in parallel
+        // Fetch stats in parallel
+        const [totalNFTs, battleStats, gmemeRemaining, polRaised] = await Promise.all([
+            getTotalNFTs(),
+            getTotalBattles(),
+            getSwapGmemeBalance(),
+            getSwapPolRaised()
+        ]);
+
+        // Update cache
+        statsCache = {
+            totalNFTs: totalNFTs || 0,
+            totalBattles: battleStats.total || 0,
+            activeBattles: battleStats.active || 0,
+            gmemeRemaining: gmemeRemaining || 0,
+            totalPolRaised: polRaised || 0,
+            lastUpdate: now
+        };
+
+        updateStatsDisplay();
+        // contract tx counts removed per request
+        // update last updated UI
+        const updatedEl = document.getElementById('mintUpdated');
+        if (updatedEl) {
+            const d = new Date();
+            updatedEl.textContent = `Last updated: ${d.toLocaleString()}`;
+        }
+    } catch (error) {
+        console.error('Error loading platform stats:', error);
+        // Show cached data if available, otherwise show placeholders
+        if (statsCache.lastUpdate) {
+            updateStatsDisplay();
+        }
+    }
+}
+
+// (contract tx counts removed)
+
+async function getTotalNFTs() {
+    try {
+        // Since GMEME NFT doesn't expose totalSupply, we'll estimate by scanning
+        // Check ownership for token IDs 1-200 (reasonable upper bound)
+        let count = 0;
+        const maxCheck = 200;
+
+        // Check in batches to avoid rate limits
+        for (let tokenId = 1; tokenId <= maxCheck; tokenId++) {
+            try {
+                const owner = await contracts.nft.ownerOf(tokenId);
+                if (owner && owner !== ethers.ZeroAddress) {
+                    count++;
+                }
+            } catch (error) {
+                // Token doesn't exist, continue
+                break;
+            }
+        }
+
+        return count;
+    } catch (error) {
+        console.warn('Could not get NFT count:', error);
+        return 0;
+    }
+}
+
+async function getTotalBattles() {
+    try {
+        const nextBattleId = await contracts.battle.nextBattleId();
+        const totalBattles = Number(nextBattleId) - 1; // Subtract 1 because it starts from 1
+
+        // Also count active battles
+        let activeCount = 0;
+        const now = Math.floor(Date.now() / 1000);
+
+        // Check last 20 battles for active status
+        const startId = Math.max(1, totalBattles - 19);
+        for (let i = startId; i < nextBattleId; i++) {
+            try {
+                const battle = await contracts.battle.battles(i);
+                const timeLeft = Math.max(0, (Number(battle.startTime) + 86400) - now);
+                if (!battle.ended && timeLeft > 0) {
+                    activeCount++;
+                }
+            } catch (error) {
+                // Battle doesn't exist or error
+                break;
+            }
+        }
+
+        return { total: totalBattles, active: activeCount };
+    } catch (error) {
+        console.warn('Could not get battle count:', error);
+        return { total: 0, active: 0 };
+    }
+}
+
+// Get GMEME balance of Swap contract (Remaining for sale)
+async function getSwapGmemeBalance() {
+    try {
+        const balance = await contracts.token.balanceOf(CONTRACTS.SWAP);
+        return parseFloat(ethers.formatEther(balance));
+    } catch (error) {
+        console.warn('Could not get swap GMEME balance:', error);
+        return 0;
+    }
+}
+
+// Get POL (native) balance of swap contract (total POL raised)
+async function getSwapPolRaised() {
+    try {
+        if (!provider) {
+            provider = new ethers.BrowserProvider(window.ethereum || window.web3?.currentProvider);
+        }
+
+        const balance = await provider.getBalance(CONTRACTS.SWAP);
+        // format as number with up to 4 decimals
+        return parseFloat(ethers.formatEther(balance));
+    } catch (error) {
+        console.warn('Could not get swap POL raised:', error);
+        return 0;
+    }
+}
+
+// Space scene mouse parallax (simple, performant)
+function initializeSpaceScene() {
+    try {
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+        const scene = document.querySelector('.space-scene');
+        if (!scene) return;
+
+        const planets = Array.from(scene.querySelectorAll('.planet'));
+
+        let w = window.innerWidth, h = window.innerHeight;
+
+        function onMove(e) {
+            const x = (e.clientX / w) - 0.5;
+            const y = (e.clientY / h) - 0.5;
+
+            planets.forEach(p => {
+                const depth = parseFloat(p.dataset.depth || '0.06');
+                const tx = x * 40 * depth * -1;
+                const ty = y * 30 * depth * -1;
+                p.style.transform = `translate3d(${tx}px, ${ty}px, 0)`;
+            });
+        }
+
+        // Touch fallback: use deviceorientation if available
+        function onOrientation(e) {
+            const x = (e.gamma || 0) / 45; // -45..45
+            const y = (e.beta || 0) / 90;   // -90..90
+            planets.forEach(p => {
+                const depth = parseFloat(p.dataset.depth || '0.06');
+                const tx = x * 30 * depth;
+                const ty = y * 20 * depth;
+                p.style.transform = `translate3d(${tx}px, ${ty}px, 0)`;
+            });
+        }
+
+        window.addEventListener('mousemove', onMove, { passive: true });
+        window.addEventListener('deviceorientation', onOrientation, { passive: true });
+
+        window.addEventListener('resize', () => {
+            w = window.innerWidth;
+            h = window.innerHeight;
+        });
+
+    } catch (err) {
+        console.warn('Space scene init failed:', err);
+    }
+}
+
+/* Canvas Starfield: performant, DPR-aware, respects reduced motion */
+function initializeStarCanvas() {
+    try {
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+        const canvas = document.getElementById('starCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+
+        let width = canvas.clientWidth;
+        let height = canvas.clientHeight;
+        let dpr = Math.max(1, window.devicePixelRatio || 1);
+        let stars = [];
+        let running = true;
+        let mouseX = 0, mouseY = 0;
+
+        function resize() {
+            width = canvas.clientWidth;
+            height = canvas.clientHeight;
+            canvas.width = Math.floor(width * dpr);
+            canvas.height = Math.floor(height * dpr);
+            canvas.style.width = width + 'px';
+            canvas.style.height = height + 'px';
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            initStars();
+        }
+
+        function initStars() {
+            stars = [];
+            const area = Math.max(10000, width * height);
+            const count = Math.min(1200, Math.floor(area / 9000)); // tune density
+            for (let i = 0; i < count; i++) {
+                const depth = Math.random() * 0.9 + 0.1; // 0.1..1.0
+                const radius = (Math.random() * 1.2 + 0.2) * (1 - depth) + 0.2;
+                stars.push({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    z: depth,
+                    r: radius,
+                    tw: Math.random() * Math.PI * 2,
+                    twSpeed: Math.random() * 1.2 + 0.2,
+                    alphaBase: Math.random() * 0.6 + 0.2
+                });
+            }
+        }
+
+        let lastTs = performance.now();
+        function frame(ts) {
+            if (!running) return;
+            const dt = Math.min(0.05, (ts - lastTs) / 1000);
+            lastTs = ts;
+
+            ctx.clearRect(0, 0, width, height);
+
+            // subtle parallax based on mouse
+            const px = (mouseX / width - 0.5) * 40;
+            const py = (mouseY / height - 0.5) * 30;
+
+            for (let s of stars) {
+                s.tw += s.twSpeed * dt;
+                const twinkle = 0.5 + Math.sin(s.tw) * 0.5;
+                const alpha = Math.max(0, Math.min(1, s.alphaBase * twinkle));
+                const ox = px * (1 - s.z) * 0.6;
+                const oy = py * (1 - s.z) * 0.6;
+
+                const x = s.x + ox;
+                const y = s.y + oy;
+
+                ctx.beginPath();
+                const grad = ctx.createRadialGradient(x, y, 0, x, y, s.r * 6);
+                grad.addColorStop(0, `rgba(255,255,255,${alpha})`);
+                grad.addColorStop(0.4, `rgba(200,220,255,${alpha * 0.6})`);
+                grad.addColorStop(1, `rgba(120,130,160,0)`);
+                ctx.fillStyle = grad;
+                ctx.fillRect(x - s.r * 6, y - s.r * 6, s.r * 12, s.r * 12);
+            }
+
+            requestAnimationFrame(frame);
+        }
+
+        // mouse interactions
+        function onMove(e) {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+        }
+
+        function onTouch(e) {
+            if (e.touches && e.touches[0]) {
+                mouseX = e.touches[0].clientX;
+                mouseY = e.touches[0].clientY;
+            }
+        }
+
+        // start
+        resize();
+        window.addEventListener('resize', resize, { passive: true });
+        window.addEventListener('mousemove', onMove, { passive: true });
+        window.addEventListener('touchmove', onTouch, { passive: true });
+        requestAnimationFrame(frame);
+
+        // cleanup on unload
+        window.addEventListener('beforeunload', () => {
+            running = false;
+        });
+
+    } catch (err) {
+        console.warn('Star canvas init failed:', err);
+    }
+}
+
+/* WebGL Planet Renderer removed (planets disabled) */
+
+function updateStatsDisplay() {
+    const totalNFTsEl = document.getElementById('totalNFTs');
+    const totalBattlesEl = document.getElementById('totalBattles');
+    const activeBattlesEl = document.getElementById('activeBattles');
+    const totalVolumeEl = document.getElementById('totalVolume');
+    const totalPolRaisedEl = document.getElementById('totalPolRaised');
+    const mintPercentEl = document.getElementById('mintPercent');
+    const mintProgressFillEl = document.getElementById('mintProgressFill');
+
+    if (totalNFTsEl && statsCache.totalNFTs !== null) {
+        totalNFTsEl.textContent = statsCache.totalNFTs.toLocaleString();
+    }
+
+    if (totalBattlesEl && statsCache.totalBattles !== null) {
+        totalBattlesEl.textContent = statsCache.totalBattles.toLocaleString();
+    }
+
+    if (activeBattlesEl && statsCache.activeBattles !== null) {
+        activeBattlesEl.textContent = statsCache.activeBattles.toLocaleString();
+    }
+
+    if (totalVolumeEl && statsCache.totalVolume !== null) {
+        totalVolumeEl.textContent = statsCache.totalVolume.toLocaleString();
+    }
+    if (totalPolRaisedEl && statsCache.totalPolRaised !== null) {
+        // show up to 4 decimals and trim trailing zeros
+        totalPolRaisedEl.textContent = Number(statsCache.totalPolRaised).toLocaleString(undefined, { maximumFractionDigits: 4 });
+    }
+    // Mint progress: initial supply 600000 GMEME
+    const initialSupply = 600000;
+    if (mintPercentEl && mintProgressFillEl && statsCache.gmemeRemaining !== null) {
+        // statsCache.gmemeRemaining is GMEME left in Swap contract
+        const remaining = Number(statsCache.gmemeRemaining) || 0;
+        const minted = Math.max(0, initialSupply - remaining);
+
+        const percent = Math.min(100, Math.max(0, (minted / initialSupply) * 100));
+        mintPercentEl.textContent = `${percent.toFixed(2)}%`;
+        mintProgressFillEl.style.width = `${percent}%`;
+        // update numbers: show remaining / total
+        const mintStatsTextEl = document.getElementById('mintStatsText');
+
+        if (mintStatsTextEl) {
+            mintStatsTextEl.textContent = `${Number(remaining).toLocaleString()} / ${Number(initialSupply).toLocaleString()} GMEME remaining`;
+        }
+        // ensure no spark (clean look)
+        const spark = document.getElementById('mintSpark');
+        if (spark) spark.style.display = 'none';
+    }
+}
+
+// Cleanup function
+window.addEventListener('beforeunload', () => {
+    if (statsRefreshTimer) {
+        clearInterval(statsRefreshTimer);
+    }
+});
+
 function showMessage(text, type = 'info') {
     const container = document.getElementById('messageContainer');
     const message = document.createElement('div');
@@ -1353,3 +1745,26 @@ function showMessage(text, type = 'info') {
         message.remove();
     }, 5000);
 }
+
+// Initialize platform stats on page load
+document.addEventListener('DOMContentLoaded', () => {
+    // Load stats immediately
+    loadPlatformStats();
+
+    // Refresh stats every 5 minutes
+    statsRefreshTimer = setInterval(() => {
+        loadPlatformStats();
+    }, 5 * 60 * 1000);
+
+    // Initialize space scene if exists
+    const starCanvas = document.getElementById('starCanvas');
+    if (starCanvas) {
+        initializeStarCanvas();
+    }
+
+    const spaceScene = document.querySelector('.space-scene');
+    if (spaceScene) {
+        initializeSpaceScene();
+    }
+});
+
