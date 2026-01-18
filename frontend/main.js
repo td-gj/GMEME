@@ -1881,16 +1881,16 @@ async function checkVoteBalance(userAddress) {
 
 // Override or Define handleVote
 window.handleVote = async function (battleId, fighterIndex) {
-    if (!currentAccount) {
+    if (!userAddress) {
         showMessage('Please connect your wallet first!', 'error');
         return;
     }
 
     // 1. Check Anti-Sybil Condition
     showMessage('Checking eligibility...', 'info');
-    const hasEnough = await checkVoteBalance(currentAccount);
+    const hasEnough = await checkVoteBalance(userAddress);
     if (!hasEnough) {
-        showMessage('⚠️ Vui lòng nắm giữ ít nhất 1 GMEME để vote!', 'error');
+        showMessage('⚠️ Please hold at least 1 GMEME to vote!', 'error');
         return;
     }
 
@@ -1930,7 +1930,7 @@ window.handleVote = async function (battleId, fighterIndex) {
 };
 
 window.handleEndBattle = async function (battleId) {
-    if (!currentAccount) {
+    if (!userAddress) {
         showMessage('Please connect wallet', 'error');
         return;
     }
