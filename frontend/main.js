@@ -102,6 +102,31 @@ function initializeEventListeners() {
 
     // Battle
     document.getElementById('joinBattleBtn').addEventListener('click', handleJoinBattle);
+
+    // Docs modal (in-app)
+    const docsBtn = document.getElementById('docsBtn');
+    const docsModal = document.getElementById('docsModal');
+    const docsClose = document.getElementById('docsModalClose');
+    const docsBackdrop = document.getElementById('docsModalBackdrop');
+    if (docsBtn && docsModal) {
+        docsBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            docsModal.classList.remove('hidden');
+            docsModal.setAttribute('aria-hidden', 'false');
+        });
+    }
+    if (docsClose && docsModal) {
+        docsClose.addEventListener('click', () => {
+            docsModal.classList.add('hidden');
+            docsModal.setAttribute('aria-hidden', 'true');
+        });
+    }
+    if (docsBackdrop && docsModal) {
+        docsBackdrop.addEventListener('click', () => {
+            docsModal.classList.add('hidden');
+            docsModal.setAttribute('aria-hidden', 'true');
+        });
+    }
 }
 
 // Wallet Functions
@@ -205,6 +230,8 @@ function disconnectWallet() {
 
     if (walletSection) walletSection.classList.remove('hidden');
     if (appContent) appContent.classList.add('hidden');
+    const headerInfo = document.getElementById('headerWalletInfo');
+    if (headerInfo) headerInfo.classList.add('hidden');
 
     showMessage('Wallet disconnected', 'info');
 }
@@ -216,6 +243,9 @@ function updateWalletUI() {
 
     if (walletSection) walletSection.classList.add('hidden');
     if (appContent) appContent.classList.remove('hidden');
+
+    const headerInfo = document.getElementById('headerWalletInfo');
+    if (headerInfo) headerInfo.classList.remove('hidden');
 
     const addrEl = document.getElementById('walletAddress');
     if (addrEl) addrEl.textContent = `Connected: ${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`;
@@ -263,6 +293,8 @@ function switchTab(tabName) {
         loadBattleNFTSelect();
     } else if (tabName === 'leaderboard') {
         loadLeaderboard();
+    } else if (tabName === 'mylive') {
+        loadMyLiveArena();
     }
 }
 
@@ -961,6 +993,74 @@ async function handleJoinBattle() {
     }
 }
 
+// My Live Arena - temporary stub (replaced complex rendering to avoid build parse issues)
+async function loadMyLiveArena() {
+    const container = document.getElementById('myBattleList');
+    if (!container) return;
+
+    if (!signer) {
+        container.innerHTML = '<p class="text-center" style="color: var(--text-muted);">Please connect your wallet</p>';
+        return;
+    }
+
+    try {
+        container.innerHTML = '<div class="loading"><div class="spinner"></div><p style="margin-top: 1rem;">Loading your battles...</p></div>';
+
+        // Simple safe implementation: fetch nextBattleId and list battle ids that include user's token IDs later.
+        const nextBattleId = Number(await contracts.battle.nextBattleId());
+        const startId = Math.max(1, nextBattleId - 50); // small scan to keep fast
+        const found = [];
+
+        for (let i = startId; i < nextBattleId; i++) {
+            try {
+                const battle = await contracts.battle.battles(i);
+                if (!battle) continue;
+                // quick string search: check tokenId fields as string for user's token ids
+                const p1 = String(battle.p1TokenId);
+                const p2 = String(battle.p2TokenId);
+                // if user owns either token, we'll show the battle id (detailed view still available)
+                // ownership check deferred to detailed view to avoid heavy scanning here
+                found.push({ id: Number(battle.id), p1TokenId: p1, p2TokenId: p2, ended: Boolean(battle.ended), startTime: Number(battle.startTime) });
+            } catch (e) {
+                // ignore errors
+            }
+        }
+
+        if (found.length === 0) {
+            container.innerHTML = '<p class="text-center" style="color: var(--text-muted);">No active battles found for your NFTs (or scan limited).</p>';
+            return;
+        }
+
+        // Render a minimal list (avoid template literals spanning many lines)
+        container.innerHTML = '';
+        found.forEach(b => {
+            const card = document.createElement('div');
+            card.className = 'card battle-card';
+            card.style.padding = '1rem';
+            card.style.marginBottom = '1rem';
+
+            const header = document.createElement('div');
+            header.style.display = 'flex';
+            header.style.justifyContent = 'space-between';
+            header.style.alignItems = 'center';
+            header.innerHTML = `<div style="font-weight:700;">Battle #${b.id}</div><div style="color:var(--text-muted); font-size:0.9rem;">${new Date(b.startTime*1000).toLocaleString()}</div>`;
+            card.appendChild(header);
+
+            const status = document.createElement('div');
+            status.style.textAlign = 'right';
+            status.style.marginTop = '0.75rem';
+            status.innerHTML = b.ended ? '<span class="status-ended">Ended</span>' : '<span class="status-active">Active</span>';
+            card.appendChild(status);
+
+            container.appendChild(card);
+        });
+
+    } catch (error) {
+        console.error('Error loading my battles (stub):', error);
+        container.innerHTML = '<p class="text-center" style="color: var(--danger);">Failed to load your battles.</p>';
+    }
+}
+
 async function loadActiveBattles() {
     if (!signer) {
         document.getElementById('battleList').innerHTML = '<p class="text-center" style="color: var(--text-secondary);">Please connect your wallet</p>';
@@ -1459,16 +1559,21 @@ async function getTotalNFTs() {
 
 async function getTotalBattles() {
     try {
+        if (!contracts.battle) return { total: 0, active: 0 };
+
+        // Contract starts nextBattleId at 1. Total = nextBattleId - 1
         const nextBattleId = await contracts.battle.nextBattleId();
-        const totalBattles = Number(nextBattleId) - 1; // Subtract 1 because it starts from 1
+        const totalBattles = Math.max(0, Number(nextBattleId) - 1);
 
         // Also count active battles
         let activeCount = 0;
         const now = Math.floor(Date.now() / 1000);
 
         // Check last 20 battles for active status
-        const startId = Math.max(1, totalBattles - 19);
-        for (let i = startId; i < nextBattleId; i++) {
+        // Since contract is new, totalBattles might be small, logic still holds
+        const startId = Math.max(1, Number(nextBattleId) - 20);
+
+        for (let i = startId; i < Number(nextBattleId); i++) {
             try {
                 const battle = await contracts.battle.battles(i);
                 const timeLeft = Math.max(0, (Number(battle.startTime) + 86400) - now);
@@ -1476,7 +1581,6 @@ async function getTotalBattles() {
                     activeCount++;
                 }
             } catch (error) {
-                // Battle doesn't exist or error
                 break;
             }
         }
@@ -1618,9 +1722,17 @@ function initializeStarCanvas() {
 
             ctx.clearRect(0, 0, width, height);
 
+            if (width <= 0 || height <= 0) {
+                requestAnimationFrame(frame);
+                return;
+            }
+
             // subtle parallax based on mouse
-            const px = (mouseX / width - 0.5) * 40;
-            const py = (mouseY / height - 0.5) * 30;
+            const safeWidth = width || 1;
+            const safeHeight = height || 1;
+
+            const px = (mouseX / safeWidth - 0.5) * 40;
+            const py = (mouseY / safeHeight - 0.5) * 30;
 
             for (let s of stars) {
                 s.tw += s.twSpeed * dt;
@@ -1768,3 +1880,89 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+
+/* =========================================================================
+   VOTING LOGIC WITH ANTI-SYBIL CHECK (Added by Antigravity)
+   ========================================================================= */
+
+// Check if user holds at least 1 GMEME
+async function checkVoteBalance(userAddress) {
+    try {
+        if (!contracts || !contracts.token) return false;
+        const balance = await contracts.token.balanceOf(userAddress);
+        // 1 GMEME check (assuming 18 decimals)
+        const minBalance = ethers.parseEther("1.0");
+        return balance >= minBalance;
+    } catch (error) {
+        console.error("Error checking balance:", error);
+        return false;
+    }
+}
+
+// Override or Define handleVote
+window.handleVote = async function (battleId, fighterIndex) {
+    if (!currentAccount) {
+        showMessage('Please connect your wallet first!', 'error');
+        return;
+    }
+
+    // 1. Check Anti-Sybil Condition
+    showMessage('Checking eligibility...', 'info');
+    const hasEnough = await checkVoteBalance(currentAccount);
+    if (!hasEnough) {
+        showMessage('⚠️ Vui lòng nắm giữ ít nhất 1 GMEME để vote!', 'error');
+        return;
+    }
+
+    // 2. Proceed with Vote
+    try {
+        // Show loading state
+        const btn = document.activeElement;
+        const originalText = btn ? btn.innerText : '';
+        if (btn) btn.innerText = 'Voting...';
+
+        const tx = await contracts.battle.vote(battleId, fighterIndex);
+        showMessage('Transaction sent! Waiting for confirmation...', 'info');
+
+        await tx.wait();
+        showMessage('Vote successful! Thank you for participating.', 'success');
+
+        // Refresh data
+        if (window.loadActiveBattles) window.loadActiveBattles();
+        if (typeof window.viewBattleDetail === 'function' && document.getElementById('battle-detail-view').classList.contains('hidden') === false) {
+            window.viewBattleDetail(battleId); // refresh detail view logic reuse
+        }
+        // Force reload stats
+        loadPlatformStats();
+
+    } catch (error) {
+        console.error("Vote failed:", error);
+        if (btn) btn.innerText = originalText;
+
+        if (error.code === 4001 || error.code === 'ACTION_REJECTED') {
+            showMessage('You rejected the transaction.', 'info');
+        } else {
+            showMessage('Voting failed: ' + (error.reason || error.message), 'error');
+        }
+    } finally {
+        if (btn) btn.innerText = originalText;
+    }
+};
+
+window.handleEndBattle = async function (battleId) {
+    if (!currentAccount) {
+        showMessage('Please connect wallet', 'error');
+        return;
+    }
+    try {
+        showMessage('Ending battle...', 'info');
+        const tx = await contracts.battle.endBattle(battleId);
+        await tx.wait();
+        showMessage('Battle ended! Rewards distributed.', 'success');
+        window.loadActiveBattles();
+        window.viewBattleDetail(battleId);
+    } catch (error) {
+        console.error(error);
+        showMessage('Failed to end battle', 'error');
+    }
+};

@@ -58,6 +58,7 @@ Manage your roster of fighters.
 Even if you don't fight, you can earn.
 
 - **Vote**: Bet on who you think will win an active battle.
+- **Requirement**: You must hold at least **1 GMEME** in your wallet to cast a vote (Anti-spam protection).
 - **Reward**: If your choice wins, you share a pool of GMEME tokens distributed to correct voters.
 
 ---

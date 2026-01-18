@@ -96,6 +96,7 @@ contract GMEMEBattle is Ownable {
         require(!b.ended, "Battle Ended");
         require(block.timestamp < b.startTime + battleDuration, "Time over");
         require(side == 1 || side == 2, "Invalid side");
+        require(gmemeToken.balanceOf(msg.sender) >= 1 ether, "Must hold 1 GMEME to vote");
 
         _processVoteCost(msg.sender);
 

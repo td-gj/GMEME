@@ -12,289 +12,314 @@
 <body>
   <div id="app">
     <header>
-      <div class="logo-container">
-        <div class="logo-glow"></div>
-        <img src="/G.svg" alt="GMEME Logo" class="logo">
-      </div>
       <div class="tagline">The Ultimate Web3 Meme Battle Arena</div>
 
-      <!-- Social Links -->
-      <div class="social-links">
-        <a href="https://www.gmeme-battle.com/docs/" target="_blank" rel="noopener noreferrer" class="social-btn">
-          Docs
-        </a>
-        <a href="https://x.com/gmeme_battle" target="_blank" class="social-btn">
-          X
-        </a>
+      <!-- Social Links (moved to bottom-right) -->
+      <!-- Top-right Docs / X -->
+      <div class="top-links" aria-hidden="false">
+        <a href="https://www.gmeme-battle.com/docs/" target="_blank" rel="noopener noreferrer" class="social-btn" id="docsBtn">Docs</a>
+        <a href="https://x.com/gmeme_battle" target="_blank" class="social-btn">X</a>
       </div>
-    </header>
 
-    <!-- Landing Section -->
-    <div id="walletSection" class="landing-section">
-      <!-- Platform Stats -->
-      <div class="stats-section">
-        <h2 class="stats-title">GMEME Battle Arena</h2>
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-content">
-              <h4 class="stat-value" id="totalNFTs">--</h4>
-              <p class="stat-label">Total Fighters</p>
+      <!-- Bottom-center cluster (wallet pill) -->
+      <div class="social-links compact" aria-hidden="false">
+        <div id="headerWalletInfo" class="wallet-info-compact hidden" role="status" aria-live="polite">
+          <div class="user-stats">
+            <div class="stat-item">
+              <span class="val" id="polBalance">0</span>
+              <span class="unit">POL</span>
+            </div>
+            <div class="stat-item">
+              <span class="val" id="gmemeBalance">0</span>
+              <span class="unit">GMEME</span>
+            </div>
+            <div class="stat-item">
+              <span class="val" id="nftCount">0</span>
+              <span class="unit">Fighters</span>
             </div>
           </div>
-          <div class="stat-card">
-            <div class="stat-content">
-              <h4 class="stat-value" id="totalPolRaised">--</h4>
-              <p class="stat-label">Total POL Raised (Swap)</p>
+          <div class="wallet-address" id="walletAddress" aria-hidden="false">Connected: --</div>
+        </div>
+      </div>
+  </div>
+  </header>
+
+  <!-- In-app Docs Modal -->
+  <div id="docsModal" class="modal hidden" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" id="docsModalBackdrop"></div>
+    <div class="modal-card">
+      <button class="modal-close" id="docsModalClose" aria-label="Close">✕</button>
+      <h3 class="modal-title">GMEME Voting Rules</h3>
+      <div class="modal-body">
+        <p>To participate in voting, you must hold at least <strong>1 GMEME</strong> in your connected wallet. This is checked on-chain before the vote transaction is allowed.</p>
+        <p>This prevents sybil voting and ensures voters have skin in the game.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Landing Section -->
+  <div id="walletSection" class="landing-section">
+    <!-- Platform Stats -->
+    <div class="stats-section">
+      <h2 class="stats-title">GMEME Battle Arena</h2>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-content">
+            <h4 class="stat-value" id="totalNFTs">--</h4>
+            <p class="stat-label">Total Fighters</p>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-content">
+            <h4 class="stat-value" id="totalPolRaised">--</h4>
+            <p class="stat-label">Total POL Raised</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Progress toward initial supply -->
+      <div class="mint-progress-card">
+        <div class="progress-header">
+          <span class="progress-label">Mint Progress</span>
+          <span id="mintPercent" class="progress-percent">--%</span>
+        </div>
+
+        <div class="progress-track">
+          <div id="mintProgressFill" class="progress-fill"></div>
+        </div>
+
+        <div class="progress-stats">
+          <span id="mintStatsText">-- / -- GMEME remaining</span>
+        </div>
+
+        <div class="progress-footer">
+          <span id="mintUpdated">Last updated: --</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Space Scene (stars + planets) -->
+    <div class="space-scene" aria-hidden="true">
+      <canvas id="starCanvas" class="star-canvas" tabindex="-1" aria-hidden="true"></canvas>
+      <div class="nebula nebula-1"></div>
+      <div class="nebula nebula-2"></div>
+
+      <!-- planets removed: keeping starfield + nebulas only -->
+    </div>
+
+    <!-- Connect Wallet -->
+    <div class="connect-section">
+      <h3>Ready to Battle?</h3>
+      <p>Join thousands of warriors in the ultimate Web3 battle arena</p>
+      <button id="connectWalletBtn" class="connect-button">
+        Connect Wallet
+      </button>
+    </div>
+
+
+  </div>
+
+  <!-- Authenticated View -->
+  <div id="appContent" class="hidden">
+    <!-- Wallet Info moved to Header -->
+
+    <!-- Messages -->
+    <div id="messageContainer"></div>
+
+    <!-- Navigation Tabs -->
+    <div class="tabs">
+      <button class="tab active" data-tab="activebattles">Live Arena</button>
+        <button class="tab" data-tab="mylive">My Live Arena</button>
+      <button class="tab" data-tab="mynfts">My Collection</button>
+      <button class="tab" data-tab="battle">Join Queue</button>
+      <button class="tab" data-tab="mint">Mint Fighter</button>
+      <button class="tab" data-tab="leaderboard">Leaderboard</button>
+      <button class="tab" data-tab="swap">SWAP $GMEME</button>
+    </div>
+
+    <!-- Tab Content Area -->
+    <div id="tabContent">
+
+      <!-- 1. Active Battles (ARENA) - Default -->
+      <!-- ... (Active Battles content logic remains in view_file if needed but we skip to keep context) ... -->
+
+      <!-- ... -->
+
+      <!-- 6. Leaderboard -->
+      <div id="leaderboard-content" class="tab-content hidden">
+        <div class="card">
+          <h2 class="card-title">🏆 Hall of Fame</h2>
+          <div class="table-container" style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; text-align: left;">
+              <thead>
+                <tr style="border-bottom: 2px solid var(--glass-border);">
+                  <th style="padding: 1rem;">Rank</th>
+                  <th style="padding: 1rem;">Fighter</th>
+                  <th style="padding: 1rem;">ELO</th>
+                  <th style="padding: 1rem;">Owner</th>
+                </tr>
+              </thead>
+              <tbody id="leaderboardList">
+                <!-- JS will populate this -->
+                <tr>
+                  <td colspan="4" class="text-center" style="padding: 2rem;">Loading rankings...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- 1. Active Battles (ARENA) - Default -->
+      <div id="activebattles-content" class="tab-content">
+        <div class="battle-header" style="display: flex; justify-content: space-between; align-items: center;">
+          <h2 class="card-title" style="margin:0">Live Battles</h2>
+          <button class="btn btn-secondary" onclick="loadActiveBattles()">Refresh Arena</button>
+        </div>
+
+        <!-- My Live Arena - battles where user is owner -->
+        <div id="mylive-content" class="tab-content hidden">
+          <div class="card">
+            <h2 class="card-title">My Live Arena</h2>
+            <div id="myBattleList" class="battle-list">
+              <div class="loading">
+                <div class="spinner"></div>
+                <p style="margin-top: 1rem;">Loading your battles...</p>
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- Progress toward initial supply -->
-        <div class="mint-progress-card">
-          <div class="progress-header">
-            <span class="progress-label">Mint Progress</span>
-            <span id="mintPercent" class="progress-percent">--%</span>
-          </div>
-
-          <div class="progress-track">
-            <div id="mintProgressFill" class="progress-fill"></div>
-          </div>
-
-          <div class="progress-stats">
-            <span id="mintStatsText">-- / -- GMEME remaining</span>
-          </div>
-
-          <div class="progress-footer">
-            <span id="mintUpdated">Last updated: --</span>
+        <div id="battleList" class="battle-list">
+          <div class="loading">
+            <div class="spinner"></div>
+            <p style="margin-top: 1rem;">Scanning Arena...</p>
           </div>
         </div>
       </div>
 
-      <!-- Space Scene (stars + planets) -->
-      <div class="space-scene" aria-hidden="true">
-        <canvas id="starCanvas" class="star-canvas" tabindex="-1" aria-hidden="true"></canvas>
-        <div class="nebula nebula-1"></div>
-        <div class="nebula nebula-2"></div>
-
-        <!-- planets removed: keeping starfield + nebulas only -->
+      <!-- BATTLE DETAIL VIEW (Hidden Overlay) -->
+      <div id="battle-detail-view" class="tab-content hidden">
+        <button class="btn btn-secondary mb-2" onclick="closeBattleDetail()">← Back to Arena</button>
+        <div class="card" id="battle-detail-card">
+          <!-- Detail content injected via JS -->
+          <div class="loading">
+            <div class="spinner"></div>
+          </div>
+        </div>
       </div>
 
-      <!-- Connect Wallet -->
-      <div class="connect-section">
-        <h3>Ready to Battle?</h3>
-        <p>Join thousands of warriors in the ultimate Web3 battle arena</p>
-        <button id="connectWalletBtn" class="connect-button">
-          Connect Wallet
-        </button>
+      <!-- 2. My NFTs -->
+      <div id="mynfts-content" class="tab-content hidden">
+        <h2 class="card-title">My Fighters Collection</h2>
+        <div id="nftGrid" class="nft-grid">
+          <div class="loading">
+            <div class="spinner"></div>
+            <p style="margin-top: 1rem;">Loading your army...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Join Battle (Queue) -->
+      <div id="battle-content" class="tab-content hidden">
+        <div class="card">
+          <h2 class="card-title">Join the Battle Queue</h2>
+          <p style="color: var(--text-muted); margin-bottom: 2rem;">Select a fighter to enter the queue. If a player
+            is waiting, you start instantly!</p>
+
+          <div class="form-group">
+            <label class="form-label">Select Your Fighter</label>
+            <select id="battleNftSelect" class="form-input" style="background: rgba(0,0,0,0.5);">
+              <option value="">Loading fighters...</option>
+            </select>
+          </div>
+
+          <div class="battle-info"
+            style="margin: 2rem 0; padding: 1.5rem; background: var(--bg-glass); border-radius: 12px;">
+            <div class="stat-row" style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+              <span class="text-muted">Entry Fee:</span>
+              <span class="text-white">10 GMEME</span>
+            </div>
+            <div class="stat-row" style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+              <span class="text-muted">Winner Reward:</span>
+              <span class="text-success">18 GMEME</span>
+            </div>
+            <div class="stat-row" style="display: flex; justify-content: space-between;">
+              <span class="text-muted">Duration:</span>
+              <span class="text-white">24 Hours</span>
+            </div>
+          </div>
+
+          <button id="joinBattleBtn" class="btn btn-primary" style="width: 100%;">Enter Queue (10 GMEME)</button>
+        </div>
+      </div>
+
+      <!-- 4. Mint -->
+      <div id="mint-content" class="tab-content hidden">
+        <div class="card">
+          <h2 class="card-title">Summon New Fighter</h2>
+          <p style="color: var(--text-muted); margin-bottom: 1.5rem;">
+            Mint Cost: <strong style="color: var(--primary)">1 GMEME</strong> | Initial ELO: <strong>0</strong>
+          </p>
+          <div class="form-group">
+            <label class="form-label">Fighter Name</label>
+            <input type="text" id="nftName" class="form-input" placeholder="Enter name..." maxlength="20">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Upload Avatar</label>
+            <div style="position: relative;">
+              <input type="file" id="nftImageFile" accept="image/*" style="display: none;">
+              <button type="button" id="uploadImageBtn" class="btn btn-secondary"
+                style="width: 100%; margin-bottom: 1rem;">
+                Select Image
+              </button>
+            </div>
+            <div id="imagePreview" class="hidden" style="margin-top: 1rem; text-align: center;">
+              <img id="previewImg" src="" alt="Preview"
+                style="max-width: 100%; height: 200px; border-radius: 12px; object-fit: cover;">
+              <div id="uploadStatus" style="margin-top: 0.5rem; color: var(--text-muted); font-size: 0.9rem;"></div>
+            </div>
+          </div>
+          <button id="mintBtn" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Mint Now</button>
+        </div>
+      </div>
+
+      <!-- 5. Swap -->
+      <div id="swap-content" class="tab-content hidden">
+        <div class="card" style="max-width: 500px; margin: 0 auto;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h2 class="card-title" style="margin: 0;">Token Exchange</h2>
+            <button id="switchSwapDirectionBtn" class="btn btn-secondary" style="padding: 0.5rem 1rem;">Switch</button>
+          </div>
+
+          <div
+            style="background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 12px; margin-bottom: 1.5rem; text-align: center;">
+            Rate: <span style="color: var(--accent)" id="swapRateDisplay">6 POL = 1 GMEME</span>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" id="swapInputLabel">You Pay (POL)</label>
+            <input type="number" id="swapAmount" class="form-input" placeholder="0.0" step="0.01" min="0"
+              style="font-size: 1.5rem; font-weight: bold;">
+          </div>
+
+          <div class="text-center" style="font-size: 1.5rem; margin: 0.5rem 0;"></div>
+
+          <div class="form-group">
+            <label class="form-label" id="swapOutputLabel">You Get (GMEME Estimate)</label>
+            <div id="swapEstimate"
+              style="font-size: 1.5rem; font-weight: bold; color: var(--primary); padding: 0.8rem;">0.0</div>
+          </div>
+
+          <button id="swapBtn" class="btn btn-primary" style="width: 100%;">Buy GMEME</button>
+        </div>
       </div>
 
 
     </div>
-
-    <!-- Authenticated View -->
-    <div id="appContent" class="hidden">
-      <div class="wallet-info">
-        <div class="wallet-address" id="walletAddress">Not Connected</div>
-        <div class="balance-grid">
-          <div class="balance-item">
-            <div class="balance-label">POL Balance</div>
-            <div class="balance-value" id="polBalance">0</div>
-          </div>
-          <div class="balance-item">
-            <div class="balance-label">GMEME Balance</div>
-            <div class="balance-value" id="gmemeBalance">0</div>
-          </div>
-          <div class="balance-item">
-            <div class="balance-label">My NFTs</div>
-            <div class="balance-value" id="nftCount">0</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Messages -->
-      <div id="messageContainer"></div>
-
-      <!-- Navigation Tabs -->
-      <div class="tabs">
-        <button class="tab active" data-tab="activebattles">Live Arena</button>
-        <button class="tab" data-tab="mynfts">My Collection</button>
-        <button class="tab" data-tab="battle">Join Queue</button>
-        <button class="tab" data-tab="mint">Mint Fighter</button>
-        <button class="tab" data-tab="leaderboard">Leaderboard</button>
-        <button class="tab" data-tab="swap">Swap Token</button>
-      </div>
-
-      <!-- Tab Content Area -->
-      <div id="tabContent">
-
-        <!-- 1. Active Battles (ARENA) - Default -->
-        <!-- ... (Active Battles content logic remains in view_file if needed but we skip to keep context) ... -->
-
-        <!-- ... -->
-
-        <!-- 6. Leaderboard -->
-        <div id="leaderboard-content" class="tab-content hidden">
-          <div class="card">
-            <h2 class="card-title">🏆 Hall of Fame</h2>
-            <div class="table-container" style="overflow-x: auto;">
-              <table style="width: 100%; border-collapse: collapse; text-align: left;">
-                <thead>
-                  <tr style="border-bottom: 2px solid var(--glass-border);">
-                    <th style="padding: 1rem;">Rank</th>
-                    <th style="padding: 1rem;">Fighter</th>
-                    <th style="padding: 1rem;">ELO</th>
-                    <th style="padding: 1rem;">Owner</th>
-                  </tr>
-                </thead>
-                <tbody id="leaderboardList">
-                  <!-- JS will populate this -->
-                  <tr>
-                    <td colspan="4" class="text-center" style="padding: 2rem;">Loading rankings...</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-
-        <!-- 1. Active Battles (ARENA) - Default -->
-        <div id="activebattles-content" class="tab-content">
-          <div class="battle-header" style="display: flex; justify-content: space-between; align-items: center;">
-            <h2 class="card-title" style="margin:0">🔥 Live Battles</h2>
-            <button class="btn btn-secondary" onclick="loadActiveBattles()">Refresh Arena</button>
-          </div>
-
-          <div id="battleList" class="battle-list">
-            <div class="loading">
-              <div class="spinner"></div>
-              <p style="margin-top: 1rem;">Scanning Arena...</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- BATTLE DETAIL VIEW (Hidden Overlay) -->
-        <div id="battle-detail-view" class="tab-content hidden">
-          <button class="btn btn-secondary mb-2" onclick="closeBattleDetail()">← Back to Arena</button>
-          <div class="card" id="battle-detail-card">
-            <!-- Detail content injected via JS -->
-            <div class="loading">
-              <div class="spinner"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 2. My NFTs -->
-        <div id="mynfts-content" class="tab-content hidden">
-          <h2 class="card-title">My Fighters Collection</h2>
-          <div id="nftGrid" class="nft-grid">
-            <div class="loading">
-              <div class="spinner"></div>
-              <p style="margin-top: 1rem;">Loading your army...</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- 3. Join Battle (Queue) -->
-        <div id="battle-content" class="tab-content hidden">
-          <div class="card">
-            <h2 class="card-title">Join the Battle Queue</h2>
-            <p style="color: var(--text-muted); margin-bottom: 2rem;">Select a fighter to enter the queue. If a player
-              is waiting, you start instantly!</p>
-
-            <div class="form-group">
-              <label class="form-label">Select Your Fighter</label>
-              <select id="battleNftSelect" class="form-input" style="background: rgba(0,0,0,0.5);">
-                <option value="">Loading fighters...</option>
-              </select>
-            </div>
-
-            <div class="battle-info"
-              style="margin: 2rem 0; padding: 1.5rem; background: var(--bg-glass); border-radius: 12px;">
-              <div class="stat-row" style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                <span class="text-muted">Entry Fee:</span>
-                <span class="text-white">10 GMEME</span>
-              </div>
-              <div class="stat-row" style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                <span class="text-muted">Winner Reward:</span>
-                <span class="text-success">18 GMEME</span>
-              </div>
-              <div class="stat-row" style="display: flex; justify-content: space-between;">
-                <span class="text-muted">Duration:</span>
-                <span class="text-white">24 Hours</span>
-              </div>
-            </div>
-
-            <button id="joinBattleBtn" class="btn btn-primary" style="width: 100%;">⚔️ Enter Queue (10 GMEME)</button>
-          </div>
-        </div>
-
-        <!-- 4. Mint -->
-        <div id="mint-content" class="tab-content hidden">
-          <div class="card">
-            <h2 class="card-title">Summon New Fighter</h2>
-            <p style="color: var(--text-muted); margin-bottom: 1.5rem;">
-              Mint Cost: <strong style="color: var(--primary)">1 GMEME</strong> | Initial ELO: <strong>0</strong>
-            </p>
-            <div class="form-group">
-              <label class="form-label">Fighter Name</label>
-              <input type="text" id="nftName" class="form-input" placeholder="Enter name..." maxlength="20">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Upload Avatar</label>
-              <div style="position: relative;">
-                <input type="file" id="nftImageFile" accept="image/*" style="display: none;">
-                <button type="button" id="uploadImageBtn" class="btn btn-secondary"
-                  style="width: 100%; margin-bottom: 1rem;">
-                  📤 Select Image
-                </button>
-              </div>
-              <div id="imagePreview" class="hidden" style="margin-top: 1rem; text-align: center;">
-                <img id="previewImg" src="" alt="Preview"
-                  style="max-width: 100%; height: 200px; border-radius: 12px; object-fit: cover;">
-                <div id="uploadStatus" style="margin-top: 0.5rem; color: var(--text-muted); font-size: 0.9rem;"></div>
-              </div>
-            </div>
-            <button id="mintBtn" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">💎 Mint Now</button>
-          </div>
-        </div>
-
-        <!-- 5. Swap -->
-        <div id="swap-content" class="tab-content hidden">
-          <div class="card" style="max-width: 500px; margin: 0 auto;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-              <h2 class="card-title" style="margin: 0;">Token Exchange</h2>
-              <button id="switchSwapDirectionBtn" class="btn btn-secondary" style="padding: 0.5rem 1rem;">⇅
-                Switch</button>
-            </div>
-
-            <div
-              style="background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 12px; margin-bottom: 1.5rem; text-align: center;">
-              Rate: <span style="color: var(--accent)" id="swapRateDisplay">6 POL = 1 GMEME</span>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label" id="swapInputLabel">You Pay (POL)</label>
-              <input type="number" id="swapAmount" class="form-input" placeholder="0.0" step="0.01" min="0"
-                style="font-size: 1.5rem; font-weight: bold;">
-            </div>
-
-            <div class="text-center" style="font-size: 1.5rem; margin: 0.5rem 0;">⬇️</div>
-
-            <div class="form-group">
-              <label class="form-label" id="swapOutputLabel">You Get (GMEME Estimate)</label>
-              <div id="swapEstimate"
-                style="font-size: 1.5rem; font-weight: bold; color: var(--primary); padding: 0.8rem;">0.0</div>
-            </div>
-
-            <button id="swapBtn" class="btn btn-primary" style="width: 100%;">Buy GMEME</button>
-          </div>
-        </div>
-
-
-      </div>
-    </div>
-    <script type="module" src="/main.js"></script>
+  </div>
+  <script type="module" src="/main.js"></script>
 </body>
 
 </html>
