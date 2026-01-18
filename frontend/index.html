@@ -18,6 +18,7 @@
       <!-- Top-right Docs / X -->
       <div class="top-links" aria-hidden="false">
         <a href="https://www.gmeme-battle.com/docs/" target="_blank" rel="noopener noreferrer" class="social-btn" id="docsBtn">Docs</a>
+        <button id="ruleBtn" class="social-btn">Rule</button>
         <a href="https://x.com/gmeme_battle" target="_blank" class="social-btn">X</a>
       </div>
 
@@ -51,8 +52,10 @@
       <button class="modal-close" id="docsModalClose" aria-label="Close">✕</button>
       <h3 class="modal-title">GMEME Voting Rules</h3>
       <div class="modal-body">
-        <p>To participate in voting, you must hold at least <strong>1 GMEME</strong> in your connected wallet. This is checked on-chain before the vote transaction is allowed.</p>
-        <p>This prevents sybil voting and ensures voters have skin in the game.</p>
+        <div class="rule-note" style="font-size:0.95rem;">
+          <p>To participate in voting, you must hold at least <strong>1 GMEME</strong> in your connected wallet. This is checked on-chain before the vote transaction is allowed.</p>
+          <p>This prevents sybil voting and ensures voters have skin in the game.</p>
+        </div>
       </div>
     </div>
   </div>
@@ -129,7 +132,6 @@
     <!-- Navigation Tabs -->
     <div class="tabs">
       <button class="tab active" data-tab="activebattles">Live Arena</button>
-        <button class="tab" data-tab="mylive">My Live Arena</button>
       <button class="tab" data-tab="mynfts">My Collection</button>
       <button class="tab" data-tab="battle">Join Queue</button>
       <button class="tab" data-tab="mint">Mint Fighter</button>
@@ -178,18 +180,7 @@
           <button class="btn btn-secondary" onclick="loadActiveBattles()">Refresh Arena</button>
         </div>
 
-        <!-- My Live Arena - battles where user is owner -->
-        <div id="mylive-content" class="tab-content hidden">
-          <div class="card">
-            <h2 class="card-title">My Live Arena</h2>
-            <div id="myBattleList" class="battle-list">
-              <div class="loading">
-                <div class="spinner"></div>
-                <p style="margin-top: 1rem;">Loading your battles...</p>
-              </div>
-            </div>
-          </div>
-        </div>
+        <!-- My Live Arena removed -->
 
         <div id="battleList" class="battle-list">
           <div class="loading">

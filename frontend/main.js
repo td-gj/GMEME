@@ -105,14 +105,21 @@ function initializeEventListeners() {
 
     // Docs modal (in-app)
     const docsBtn = document.getElementById('docsBtn');
+    const ruleBtn = document.getElementById('ruleBtn');
     const docsModal = document.getElementById('docsModal');
     const docsClose = document.getElementById('docsModalClose');
     const docsBackdrop = document.getElementById('docsModalBackdrop');
-    if (docsBtn && docsModal) {
-        docsBtn.addEventListener('click', (e) => {
+    // Docs link should navigate externally; do not override the default anchor behaviour.
+    if (ruleBtn && docsModal) {
+        ruleBtn.addEventListener('click', (e) => {
             e.preventDefault();
             docsModal.classList.remove('hidden');
             docsModal.setAttribute('aria-hidden', 'false');
+            // scroll rule-note into view after a tiny delay to ensure modal is visible
+            setTimeout(() => {
+                const ruleEl = docsModal.querySelector('.rule-note');
+                if (ruleEl && ruleEl.scrollIntoView) ruleEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 50);
         });
     }
     if (docsClose && docsModal) {
@@ -293,8 +300,6 @@ function switchTab(tabName) {
         loadBattleNFTSelect();
     } else if (tabName === 'leaderboard') {
         loadLeaderboard();
-    } else if (tabName === 'mylive') {
-        loadMyLiveArena();
     }
 }
 
@@ -993,73 +998,7 @@ async function handleJoinBattle() {
     }
 }
 
-// My Live Arena - temporary stub (replaced complex rendering to avoid build parse issues)
-async function loadMyLiveArena() {
-    const container = document.getElementById('myBattleList');
-    if (!container) return;
-
-    if (!signer) {
-        container.innerHTML = '<p class="text-center" style="color: var(--text-muted);">Please connect your wallet</p>';
-        return;
-    }
-
-    try {
-        container.innerHTML = '<div class="loading"><div class="spinner"></div><p style="margin-top: 1rem;">Loading your battles...</p></div>';
-
-        // Simple safe implementation: fetch nextBattleId and list battle ids that include user's token IDs later.
-        const nextBattleId = Number(await contracts.battle.nextBattleId());
-        const startId = Math.max(1, nextBattleId - 50); // small scan to keep fast
-        const found = [];
-
-        for (let i = startId; i < nextBattleId; i++) {
-            try {
-                const battle = await contracts.battle.battles(i);
-                if (!battle) continue;
-                // quick string search: check tokenId fields as string for user's token ids
-                const p1 = String(battle.p1TokenId);
-                const p2 = String(battle.p2TokenId);
-                // if user owns either token, we'll show the battle id (detailed view still available)
-                // ownership check deferred to detailed view to avoid heavy scanning here
-                found.push({ id: Number(battle.id), p1TokenId: p1, p2TokenId: p2, ended: Boolean(battle.ended), startTime: Number(battle.startTime) });
-            } catch (e) {
-                // ignore errors
-            }
-        }
-
-        if (found.length === 0) {
-            container.innerHTML = '<p class="text-center" style="color: var(--text-muted);">No active battles found for your NFTs (or scan limited).</p>';
-            return;
-        }
-
-        // Render a minimal list (avoid template literals spanning many lines)
-        container.innerHTML = '';
-        found.forEach(b => {
-            const card = document.createElement('div');
-            card.className = 'card battle-card';
-            card.style.padding = '1rem';
-            card.style.marginBottom = '1rem';
-
-            const header = document.createElement('div');
-            header.style.display = 'flex';
-            header.style.justifyContent = 'space-between';
-            header.style.alignItems = 'center';
-            header.innerHTML = `<div style="font-weight:700;">Battle #${b.id}</div><div style="color:var(--text-muted); font-size:0.9rem;">${new Date(b.startTime*1000).toLocaleString()}</div>`;
-            card.appendChild(header);
-
-            const status = document.createElement('div');
-            status.style.textAlign = 'right';
-            status.style.marginTop = '0.75rem';
-            status.innerHTML = b.ended ? '<span class="status-ended">Ended</span>' : '<span class="status-active">Active</span>';
-            card.appendChild(status);
-
-            container.appendChild(card);
-        });
-
-    } catch (error) {
-        console.error('Error loading my battles (stub):', error);
-        container.innerHTML = '<p class="text-center" style="color: var(--danger);">Failed to load your battles.</p>';
-    }
-}
+// My Live Arena removed per user request.
 
 async function loadActiveBattles() {
     if (!signer) {
@@ -1184,7 +1123,7 @@ async function loadActiveBattles() {
 }
 
 // Detail View Logic
-window.viewBattleDetail = function (id) {
+window.viewBattleDetail = async function (id) {
     const activeContent = document.getElementById('activebattles-content');
     const detailView = document.getElementById('battle-detail-view');
     const detailCard = document.getElementById('battle-detail-card');
@@ -1193,7 +1132,48 @@ window.viewBattleDetail = function (id) {
     detailView.classList.remove('hidden');
 
     // Find battle data
-    const battle = window.loadedBattles ? window.loadedBattles.find(b => b.id === id) : null;
+    let battle = window.loadedBattles ? window.loadedBattles.find(b => String(b.id) === String(id) || b.id === id) : null;
+
+    // If not found in cache, try to fetch directly from contract using read-only RPC (avoid requiring signer)
+    if (!battle) {
+        try {
+            // Ensure we have a battle contract (read-only)
+            let tmpBattleContract = contracts.battle;
+            if (!tmpBattleContract) {
+                // Try using injected provider first
+                if (provider) {
+                    tmpBattleContract = new ethers.Contract(CONTRACTS.BATTLE, ABIS.BATTLE, provider);
+                } else if (typeof window !== 'undefined' && window.ethereum) {
+                    const tmpProv = new ethers.BrowserProvider(window.ethereum);
+                    tmpBattleContract = new ethers.Contract(CONTRACTS.BATTLE, ABIS.BATTLE, tmpProv);
+                } else {
+                    // Use configured read RPC as fallback
+                    const rpcProv = await getSafeRpcProvider();
+                    if (rpcProv) tmpBattleContract = new ethers.Contract(CONTRACTS.BATTLE, ABIS.BATTLE, rpcProv);
+                }
+            }
+
+            if (tmpBattleContract) {
+                const braw = await tmpBattleContract.battles(Number(id));
+                if (braw && Number(braw.id) > 0) {
+                    battle = {
+                        id: String(Number(braw.id)),
+                        p1TokenId: String(braw.p1TokenId),
+                        p2TokenId: String(braw.p2TokenId),
+                        p1Owner: String(braw.p1Owner),
+                        p2Owner: String(braw.p2Owner),
+                        startTime: Number(braw.startTime),
+                        ended: Boolean(braw.ended)
+                    };
+                    // attach to loadedBattles for future lookups
+                    window.loadedBattles = window.loadedBattles || [];
+                    window.loadedBattles.push(battle);
+                }
+            }
+        } catch (err) {
+            console.warn('Failed to fetch battle directly:', err);
+        }
+    }
 
     if (!battle) {
         detailCard.innerHTML = `<div class="text-center" style="padding: 3rem;"><h3>Battle #${id} Not Found</h3><p class="text-muted">Please refresh the arena list.</p></div>`;
