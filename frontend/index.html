@@ -10,6 +10,21 @@
 </head>
 
 <body>
+    <!-- Full page loader (hidden by default) -->
+    <div id="pageLoader" class="page-loader hidden" aria-hidden="true">
+      <div class="page-spinner" role="status" aria-label="Loading">
+        <svg viewBox="0 0 48 48" class="page-spinner-ring" aria-hidden="true">
+          <defs>
+            <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="var(--primary)"/>
+              <stop offset="100%" stop-color="var(--accent)"/>
+            </linearGradient>
+          </defs>
+          <circle cx="24" cy="24" r="20" stroke="rgba(255,255,255,0.06)" stroke-width="6" fill="none"/>
+          <path d="M44 24a20 20 0 0 1-20 20" stroke="url(#g1)" stroke-width="6" stroke-linecap="round" fill="none" class="spinner-arc"/>
+        </svg>
+      </div>
+    </div>
   <div id="app">
     <header>
       <div class="tagline">The Ultimate Web3 Meme Battle Arena</div>
@@ -183,10 +198,7 @@
         <!-- My Live Arena removed -->
 
         <div id="battleList" class="battle-list">
-          <div class="loading">
-            <div class="spinner"></div>
-            <p style="margin-top: 1rem;">Scanning Arena...</p>
-          </div>
+          <!-- Battles will be loaded here; full-page loader will display during fetch -->
         </div>
       </div>
 
@@ -195,9 +207,6 @@
         <button class="btn btn-secondary mb-2" onclick="closeBattleDetail()">← Back to Arena</button>
         <div class="card" id="battle-detail-card">
           <!-- Detail content injected via JS -->
-          <div class="loading">
-            <div class="spinner"></div>
-          </div>
         </div>
       </div>
 
@@ -205,10 +214,7 @@
       <div id="mynfts-content" class="tab-content hidden">
         <h2 class="card-title">My Fighters Collection</h2>
         <div id="nftGrid" class="nft-grid">
-          <div class="loading">
-            <div class="spinner"></div>
-            <p style="margin-top: 1rem;">Loading your army...</p>
-          </div>
+          <!-- NFT grid will be populated here; full-page loader will display during fetch -->
         </div>
       </div>
 

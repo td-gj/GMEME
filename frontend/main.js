@@ -277,6 +277,37 @@ async function updateBalances() {
     }
 }
 
+// Helper: return a working JsonRpcProvider by checking the configured RPC URLs
+async function getSafeRpcProvider() {
+    for (const url of NETWORK.rpcUrls) {
+        try {
+            const prov = new ethers.JsonRpcProvider(url);
+            // quick network check
+            await prov.getBlockNumber();
+            return prov;
+        } catch (e) {
+            // try next url
+            console.warn('RPC url failed, trying next:', url, e.message || e);
+        }
+    }
+    // last-resort: return provider built from first URL (may still fail)
+    return new ethers.JsonRpcProvider(NETWORK.rpcUrls[0]);
+}
+
+// Generic retry wrapper for async calls (n retries with delay)
+async function retryAsync(fn, attempts = 3, delayMs = 1000) {
+    let lastErr;
+    for (let i = 0; i < attempts; i++) {
+        try {
+            return await fn();
+        } catch (e) {
+            lastErr = e;
+            await new Promise(r => setTimeout(r, delayMs * (i + 1)));
+        }
+    }
+    throw lastErr;
+}
+
 // Tab Switching
 function switchTab(tabName) {
     // Update tab buttons
@@ -308,6 +339,9 @@ async function loadLeaderboard() {
     const tbody = document.getElementById('leaderboardList');
     if (!tbody) return;
 
+    // Show global loader while fetching leaderboard
+    const pageLoader = document.getElementById('pageLoader');
+    if (pageLoader) pageLoader.classList.remove('hidden');
     tbody.innerHTML = '<tr><td colspan="4" class="text-center" style="padding: 2rem;">Loading rankings (Batching)...</td></tr>';
 
     try {
@@ -413,7 +447,9 @@ async function loadLeaderboard() {
     } catch (error) {
         console.error("Leaderboard error:", error);
         tbody.innerHTML = `<tr><td colspan="4" class="text-center" style="color: #ef4444; padding: 2rem;">Unable to load leaderboard. <br><small>${error.message}</small></td></tr>`;
+        if (pageLoader) pageLoader.classList.add('hidden');
     }
+    if (pageLoader) pageLoader.classList.add('hidden');
 }
 
 // Swap Functions
@@ -737,7 +773,10 @@ async function loadMyNFTs() {
     }
 
     try {
-        document.getElementById('nftGrid').innerHTML = '<div class="loading"><div class="spinner"></div><p style="margin-top: 1rem;">Loading your NFTs...</p></div>';
+        // show global loader
+        const pageLoader = document.getElementById('pageLoader');
+        if (pageLoader) pageLoader.classList.remove('hidden');
+        document.getElementById('nftGrid').innerHTML = '';
 
         const balance = await contracts.nft.balanceOf(userAddress);
 
@@ -846,10 +885,13 @@ async function loadMyNFTs() {
         }
 
         displayNFTs(nfts);
+        if (pageLoader) pageLoader.classList.add('hidden');
 
     } catch (error) {
         console.error('Error loading NFTs:', error);
         document.getElementById('nftGrid').innerHTML = '<p class="text-center" style="color: var(--danger);">Error loading NFTs. Please refresh the page.</p>';
+        const pageLoader = document.getElementById('pageLoader');
+        if (pageLoader) pageLoader.classList.add('hidden');
     }
 }
 
@@ -863,14 +905,14 @@ function displayNFTs(nfts) {
 
     grid.innerHTML = nfts.map(nft => {
         // Create a simple SVG fallback image
-        const fallbackSvg = `data:image/svg+xml,${encodeURIComponent(`
-            <svg width="280" height="280" xmlns="http://www.w3.org/2000/svg">
-                <rect width="280" height="280" fill="#8b5cf6"/>
-                <text x="50%" y="50%" font-family="Arial" font-size="24" fill="white" text-anchor="middle" dominant-baseline="middle">
-                    Fighter #${nft.tokenId}
-                </text>
-            </svg>
-        `)}`;
+        const fallbackSvg = 'data:image/svg+xml,' + encodeURIComponent(
+            '<svg width="280" height="280" xmlns="http://www.w3.org/2000/svg">' +
+                '<rect width="280" height="280" fill="#8b5cf6"/>' +
+                '<text x="50%" y="50%" font-family="Arial" font-size="24" fill="white" text-anchor="middle" dominant-baseline="middle">' +
+                    'Fighter #' + nft.tokenId +
+                '</text>' +
+            '</svg>'
+        );
 
         return `
         <div class="nft-card">
@@ -1044,7 +1086,10 @@ async function loadActiveBattles() {
     }
 
     try {
-        document.getElementById('battleList').innerHTML = '<div class="loading"><div class="spinner"></div><p style="margin-top: 1rem;">Loading battles...</p></div>';
+        // show full-page loader during heavy fetch
+        document.getElementById('battleList').innerHTML = '';
+        const pageLoader = document.getElementById('pageLoader');
+        if (pageLoader) pageLoader.classList.remove('hidden');
 
         const nextBattleId = await contracts.battle.nextBattleId();
         const battles = [];
@@ -1156,8 +1201,14 @@ async function loadActiveBattles() {
     } catch (error) {
         console.error('Error loading battles:', error);
         document.getElementById('battleList').innerHTML = '<p class="text-center" style="color: var(--danger);">Error loading battles</p>';
+    } finally {
+        const pageLoader = document.getElementById('pageLoader');
+        if (pageLoader) pageLoader.classList.add('hidden');
     }
 }
+
+// Expose for inline handlers (pages using inline onclick attributes)
+window.loadActiveBattles = loadActiveBattles;
 
 // Detail View Logic
 window.viewBattleDetail = async function (id) {
@@ -1509,6 +1560,10 @@ async function loadPlatformStats() {
             contracts.token = new ethers.Contract(CONTRACTS.TOKEN, ABIS.TOKEN, provider);
         }
 
+        // Show global loader while fetching stats
+        const pageLoader = document.getElementById('pageLoader');
+        if (pageLoader) pageLoader.classList.remove('hidden');
+
         // Fetch stats in parallel
         // Fetch stats in parallel
         const [totalNFTs, battleStats, gmemeRemaining, polRaised] = await Promise.all([
@@ -1529,6 +1584,8 @@ async function loadPlatformStats() {
         };
 
         updateStatsDisplay();
+        // hide global loader
+        if (pageLoader) pageLoader.classList.add('hidden');
         // contract tx counts removed per request
         // update last updated UI
         const updatedEl = document.getElementById('mintUpdated');
@@ -1579,7 +1636,7 @@ async function getTotalBattles() {
         if (!contracts.battle) return { total: 0, active: 0 };
 
         // Contract starts nextBattleId at 1. Total = nextBattleId - 1
-        const nextBattleId = await contracts.battle.nextBattleId();
+        const nextBattleId = await retryAsync(() => contracts.battle.nextBattleId(), 3, 1000);
         const totalBattles = Math.max(0, Number(nextBattleId) - 1);
 
         // Also count active battles
@@ -1592,7 +1649,7 @@ async function getTotalBattles() {
 
         for (let i = startId; i < Number(nextBattleId); i++) {
             try {
-                const battle = await contracts.battle.battles(i);
+                const battle = await retryAsync(() => contracts.battle.battles(i), 3, 1000);
                 const timeLeft = Math.max(0, (Number(battle.startTime) + 86400) - now);
                 if (!battle.ended && timeLeft > 0) {
                     activeCount++;
@@ -1612,7 +1669,10 @@ async function getTotalBattles() {
 // Get GMEME balance of Swap contract (Remaining for sale)
 async function getSwapGmemeBalance() {
     try {
-        const balance = await contracts.token.balanceOf(CONTRACTS.SWAP);
+        // Use safe RPC provider when provider is not available or rate-limited
+        const prov = provider || await getSafeRpcProvider();
+        const tokenContract = new ethers.Contract(CONTRACTS.TOKEN, ABIS.TOKEN, prov);
+        const balance = await retryAsync(() => tokenContract.balanceOf(CONTRACTS.SWAP), 3, 1000);
         return parseFloat(ethers.formatEther(balance));
     } catch (error) {
         console.warn('Could not get swap GMEME balance:', error);
@@ -1623,12 +1683,8 @@ async function getSwapGmemeBalance() {
 // Get POL (native) balance of swap contract (total POL raised)
 async function getSwapPolRaised() {
     try {
-        if (!provider) {
-            provider = new ethers.BrowserProvider(window.ethereum || window.web3?.currentProvider);
-        }
-
-        const balance = await provider.getBalance(CONTRACTS.SWAP);
-        // format as number with up to 4 decimals
+        const prov = provider || await getSafeRpcProvider();
+        const balance = await retryAsync(() => prov.getBalance(CONTRACTS.SWAP), 3, 1000);
         return parseFloat(ethers.formatEther(balance));
     } catch (error) {
         console.warn('Could not get swap POL raised:', error);

@@ -16,9 +16,10 @@ export const NETWORK = {
         decimals: 18
     },
     rpcUrls: [
+        "https://polygon-bor-rpc.publicnode.com",
+        "https://rpc.ankr.com/polygon",
         "https://polygon-rpc.com/",
-        "https://rpc-mainnet.maticvigil.com/",
-        "https://polygon-bor-rpc.publicnode.com"
+        "https://rpc-mainnet.maticvigil.com/"
     ],
     blockExplorerUrls: ["https://polygonscan.com/"]
 };
