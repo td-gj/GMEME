@@ -929,10 +929,47 @@ async function loadBattleNFTSelect() {
                 if (owner.toLowerCase() === userAddress.toLowerCase()) {
                     const elo = await contracts.nft.getElo(tokenId);
                     const rank = await contracts.nft.getRank(tokenId);
+                    // Try to read NFT metadata name (IPFS or HTTP) and show it in the select
+                    let nftName = `Fighter #${tokenId}`;
+                    try {
+                        const tokenURI = await contracts.nft.tokenURI(tokenId);
+                        if (tokenURI) {
+                            // Support multiple gateways for IPFS
+                            const gateways = [
+                                'https://dweb.link/ipfs/',
+                                'https://cloudflare-ipfs.com/ipfs/',
+                                'https://ipfs.io/ipfs/',
+                                'https://gateway.pinata.cloud/ipfs/'
+                            ];
+
+                            let meta = null;
+                            if (tokenURI.startsWith('ipfs://')) {
+                                const hash = tokenURI.replace('ipfs://', '');
+                                for (const gw of gateways) {
+                                    try {
+                                        const r = await fetch(gw + hash);
+                                        if (r.ok) {
+                                            meta = await r.json();
+                                            break;
+                                        }
+                                    } catch (e) { /* try next gateway */ }
+                                }
+                            } else {
+                                try {
+                                    const r = await fetch(tokenURI);
+                                    if (r.ok) meta = await r.json();
+                                } catch (e) { /* ignore */ }
+                            }
+
+                            if (meta && meta.name) nftName = meta.name;
+                        }
+                    } catch (e) {
+                        // ignore metadata fetch errors
+                    }
 
                     const option = document.createElement('option');
                     option.value = tokenId.toString();
-                    option.textContent = `Fighter #${tokenId} - ${rank} (ELO: ${elo})`;
+                    option.textContent = `${nftName} - ${rank} (ELO: ${elo})`;
                     select.appendChild(option);
 
                     foundCount++;
