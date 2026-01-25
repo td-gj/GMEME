@@ -331,6 +331,8 @@ function switchTab(tabName) {
         loadBattleNFTSelect();
     } else if (tabName === 'leaderboard') {
         loadLeaderboard();
+    } else if (tabName === 'gallery') {
+        loadGallery();
     }
 }
 
@@ -339,10 +341,10 @@ async function loadLeaderboard() {
     const tbody = document.getElementById('leaderboardList');
     if (!tbody) return;
 
-    // Show global loader while fetching leaderboard
+    // Show global loader while fetching leaderboard (use full-page loader only)
     const pageLoader = document.getElementById('pageLoader');
     if (pageLoader) pageLoader.classList.remove('hidden');
-    tbody.innerHTML = '<tr><td colspan="4" class="text-center" style="padding: 2rem;">Loading rankings (Batching)...</td></tr>';
+    tbody.innerHTML = '';
 
     try {
         if (!contracts.nft) await initContracts();
@@ -402,8 +404,8 @@ async function loadLeaderboard() {
             const results = await Promise.all(batchPromises);
             results.forEach(f => { if (f) validFighters.push(f); });
 
-            // Update Progress
-            tbody.innerHTML = `<tr><td colspan="4" class="text-center" style="padding: 2rem;">Loaded ${validFighters.length}/${scanCount} fighters...</td></tr>`;
+            // Progress handled by full-page loader; avoid per-component progress UI
+            // (no-op)
         }
 
         // Sort: High ELO first
@@ -1601,6 +1603,369 @@ async function loadPlatformStats() {
         }
     }
 }
+
+// Gallery: load many NFT images (read-only, uses read RPC when possible)
+async function loadGallery() {
+    try {
+        const grid = document.getElementById('galleryGrid');
+        if (!grid) return;
+
+        // Show global loader while fetching
+        const pageLoader = document.getElementById('pageLoader');
+        if (pageLoader) pageLoader.classList.remove('hidden');
+        grid.innerHTML = '';
+
+        // Use a read-only provider if signer not available to reduce rate-limited calls
+        const prov = provider || await getSafeRpcProvider();
+        const nftContract = new ethers.Contract(CONTRACTS.NFT, ABIS.NFT, prov);
+
+        // Determine how many tokens exist:
+        // Prefer totalSupply() if contract exposes it. Otherwise use an adaptive scan.
+        let maxGallery = null;
+        try {
+            const ts = await nftContract.totalSupply();
+            maxGallery = Number(ts);
+        } catch (e) {
+            // totalSupply not available; we'll perform an adaptive scan below
+            maxGallery = null;
+        }
+
+        const BATCH_SIZE = 10;
+        const gateways = [
+            'https://dweb.link/ipfs/',
+            'https://cloudflare-ipfs.com/ipfs/',
+            'https://ipfs.io/ipfs/',
+            'https://gateway.pinata.cloud/ipfs/'
+        ];
+
+        const items = [];
+
+        // If totalSupply known, iterate exactly that many token IDs.
+        // Otherwise perform an adaptive scan: stop when we observe many consecutive missing tokens.
+        const MAX_SCAN_CAP = 10000; // safety hard-cap to prevent infinite loops on malformed contracts
+        const CONSECUTIVE_MISS_LIMIT = 200;
+
+        let scanEnd = maxGallery || MAX_SCAN_CAP;
+        let consecutiveMisses = 0;
+        let absoluteMaxSeen = 0;
+
+        for (let start = 1; start <= scanEnd; start += BATCH_SIZE) {
+            const batch = [];
+            const end = Math.min(scanEnd, start + BATCH_SIZE - 1);
+            for (let id = start; id <= end; id++) {
+                batch.push((async (tokenId) => {
+                    try {
+                        const owner = await nftContract.ownerOf(tokenId);
+                        if (!owner || owner === ethers.ZeroAddress) return null;
+                        const tokenURI = await nftContract.tokenURI(tokenId);
+                        let imageUrl = '';
+                        let name = `Fighter #${tokenId}`;
+
+                        if (tokenURI && tokenURI.startsWith('ipfs://')) {
+                            const hash = tokenURI.replace('ipfs://', '');
+                            for (const gw of gateways) {
+                                try {
+                                    const r = await fetch(gw + hash, { method: 'GET', headers: { 'Accept': 'application/json' } });
+                                    if (r.ok) {
+                                        const meta = await r.json();
+                                        if (meta.name) name = meta.name;
+                                        if (meta.image) {
+                                            if (meta.image.startsWith('ipfs://')) {
+                                                imageUrl = gw + meta.image.replace('ipfs://', '');
+                                            } else {
+                                                imageUrl = meta.image;
+                                            }
+                                        }
+                                        break;
+                                    }
+                                } catch (e) { /* try next gateway */ }
+                            }
+                            if (!imageUrl) {
+                                imageUrl = gateways[0] + hash;
+                            }
+                        } else if (tokenURI) {
+                            // tokenURI may point directly to image or metadata
+                            try {
+                                const r = await fetch(tokenURI);
+                                if (r.ok) {
+                                    const meta = await r.json();
+                                    if (meta.name) name = meta.name;
+                                    if (meta.image) imageUrl = meta.image.startsWith('ipfs://') ? gateways[0] + meta.image.replace('ipfs://', '') : meta.image;
+                                } else {
+                                    // fallback to tokenURI as image
+                                    imageUrl = tokenURI;
+                                }
+                            } catch (e) {
+                                imageUrl = tokenURI;
+                            }
+                        }
+
+                        return { tokenId: tokenId.toString(), name, image: imageUrl };
+                    } catch (e) {
+                        return null;
+                    }
+                })(id));
+            }
+
+            const results = await Promise.all(batch);
+            results.forEach(r => {
+                if (r) {
+                    items.push(r);
+                    absoluteMaxSeen = Math.max(absoluteMaxSeen, Number(r.tokenId));
+                    consecutiveMisses = 0;
+                } else {
+                    consecutiveMisses++;
+                }
+            });
+
+            // If we don't know totalSupply and have many consecutive misses, stop early
+            if (!maxGallery && consecutiveMisses >= CONSECUTIVE_MISS_LIMIT) {
+                // shrink scanEnd to last seen id to avoid scanning empty space
+                scanEnd = Math.max(absoluteMaxSeen, start);
+                break;
+            }
+
+            // Update a small progress indicator in the grid while scanning
+            const progressTotal = maxGallery || Math.min(scanEnd, MAX_SCAN_CAP);
+            // Progress handled by full-page loader; avoid per-component progress UI
+            // (no-op)
+        }
+        // If we performed adaptive scan and didn't see any items, try extending scan range once (edge cases)
+        if (!maxGallery && items.length === 0 && scanEnd < MAX_SCAN_CAP) {
+            // attempt a final pass up to MAX_SCAN_CAP
+            for (let start = scanEnd + 1; start <= MAX_SCAN_CAP; start += BATCH_SIZE) {
+                const batch = [];
+                const end = Math.min(MAX_SCAN_CAP, start + BATCH_SIZE - 1);
+                for (let id = start; id <= end; id++) {
+                    batch.push((async (tokenId) => {
+                        try {
+                            const owner = await nftContract.ownerOf(tokenId);
+                            if (!owner || owner === ethers.ZeroAddress) return null;
+                            const tokenURI = await nftContract.tokenURI(tokenId);
+                            let imageUrl = '';
+                            let name = `Fighter #${tokenId}`;
+
+                            if (tokenURI && tokenURI.startsWith('ipfs://')) {
+                                const hash = tokenURI.replace('ipfs://', '');
+                                for (const gw of gateways) {
+                                    try {
+                                        const r = await fetch(gw + hash, { method: 'GET', headers: { 'Accept': 'application/json' } });
+                                        if (r.ok) {
+                                            const meta = await r.json();
+                                            if (meta.name) name = meta.name;
+                                            if (meta.image) {
+                                                if (meta.image.startsWith('ipfs://')) {
+                                                    imageUrl = gw + meta.image.replace('ipfs://', '');
+                                                } else {
+                                                    imageUrl = meta.image;
+                                                }
+                                            }
+                                            break;
+                                        }
+                                    } catch (e) { /* try next gateway */ }
+                                }
+                                if (!imageUrl) {
+                                    imageUrl = gateways[0] + hash;
+                                }
+                            } else if (tokenURI) {
+                                try {
+                                    const r = await fetch(tokenURI);
+                                    if (r.ok) {
+                                        const meta = await r.json();
+                                        if (meta.name) name = meta.name;
+                                        if (meta.image) imageUrl = meta.image.startsWith('ipfs://') ? gateways[0] + meta.image.replace('ipfs://', '') : meta.image;
+                                    } else {
+                                        imageUrl = tokenURI;
+                                    }
+                                } catch (e) {
+                                    imageUrl = tokenURI;
+                                }
+                            }
+
+                            return { tokenId: tokenId.toString(), name, image: imageUrl };
+                        } catch (e) {
+                            return null;
+                        }
+                    })(id));
+                }
+                const results = await Promise.all(batch);
+                results.forEach(r => { if (r) items.push(r); });
+                // Progress handled by full-page loader; avoid per-component progress UI
+                // (no-op)
+            }
+        }
+
+        displayGallery(items);
+        if (pageLoader) pageLoader.classList.add('hidden');
+    } catch (error) {
+        console.error('Gallery load error:', error);
+        const grid = document.getElementById('galleryGrid');
+        if (grid) grid.innerHTML = `<p class="text-center" style="color: var(--danger);">Failed to load gallery.</p>`;
+        const pageLoader = document.getElementById('pageLoader');
+        if (pageLoader) pageLoader.classList.add('hidden');
+    }
+}
+
+function displayGallery(items) {
+    const grid = document.getElementById('galleryGrid');
+    if (!grid) return;
+    if (!items || items.length === 0) {
+        grid.innerHTML = '<p class="text-center" style="color: var(--text-secondary);">No items found.</p>';
+        return;
+    }
+    // Save items globally for reshuffle without re-fetch
+    window.galleryItems = items.slice();
+
+    // Determine display mode
+    const modeSel = document.getElementById('galleryMode');
+    const mode = (modeSel && modeSel.value) ? modeSel.value : (localStorage.getItem('galleryMode') || 'random');
+    if (modeSel) modeSel.value = mode;
+
+    renderGallery(window.galleryItems, mode);
+
+    // Wire mode selector to re-render and persist choice
+    if (modeSel) {
+        modeSel.addEventListener('change', () => {
+            const val = modeSel.value;
+            localStorage.setItem('galleryMode', val);
+            renderGallery(window.galleryItems, val);
+            // manage reshuffle timer
+            setupGalleryReshuffle(val);
+        });
+    }
+    // Setup initial reshuffle behavior
+    setupGalleryReshuffle(mode);
+}
+
+function renderGallery(items, mode = 'full') {
+    const grid = document.getElementById('galleryGrid');
+    if (!grid) return;
+
+    let displayItems = items.slice();
+    if (mode === 'random') {
+        shuffleArray(displayItems);
+    } else {
+        // sort by tokenId numeric ascending
+        displayItems.sort((a, b) => Number(a.tokenId) - Number(b.tokenId));
+    }
+
+    grid.innerHTML = displayItems.map(it => {
+        const img = it.image || `https://api.dicebear.com/7.x/pixel-art/svg?seed=${it.tokenId}`;
+        const safeImg = escapeHtml(img);
+        const safeName = escapeHtml(it.name);
+        const filename = `fighter-${it.tokenId}.png`;
+        return `
+        <div class="gallery-card">
+          <img src="${img}" alt="${safeName}" class="gallery-img" loading="lazy" onclick="openGalleryLightbox('${safeImg}', '${safeName}', '${filename}')">
+          <div class="gallery-caption">${safeName} <span style="opacity:0.7">#${it.tokenId}</span></div>
+          <div style="width:100%; display:flex; justify-content:center; gap:8px; margin-top:6px;">
+            <button class="btn btn-secondary btn-download" onclick="downloadImage('${safeImg}', '${filename}')">Download</button>
+          </div>
+        </div>
+        `;
+    }).join('');
+}
+
+// Fisher-Yates shuffle (in-place)
+function shuffleArray(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+}
+
+// Reshuffle timer management
+window._galleryReshuffleTimer = null;
+function setupGalleryReshuffle(mode) {
+    // clear previous timer
+    if (window._galleryReshuffleTimer) {
+        clearInterval(window._galleryReshuffleTimer);
+        window._galleryReshuffleTimer = null;
+    }
+    if (mode !== 'random') return;
+    const ONE_HOUR = 60 * 60 * 1000;
+    // Immediately reshuffle once when enabling random
+    if (window.galleryItems) {
+        renderGallery(window.galleryItems, 'random');
+    }
+    // Set interval to reshuffle every hour
+    window._galleryReshuffleTimer = setInterval(() => {
+        if (document.querySelector('[data-tab="gallery"]').classList.contains('active')) {
+            if (window.galleryItems) renderGallery(window.galleryItems, 'random');
+        }
+    }, ONE_HOUR);
+}
+
+// Lightbox helpers
+window.openGalleryLightbox = function (src, caption) {
+    const modal = document.getElementById('galleryLightbox');
+    const img = document.getElementById('galleryLightboxImage');
+    const cap = document.getElementById('galleryLightboxCaption');
+    if (!modal || !img) return;
+    img.src = src;
+    img.dataset.filename = `image.png`;
+    cap.textContent = caption || '';
+    // Update download button/link targets
+    const dlBtn = document.getElementById('galleryLightboxDownload');
+    const openLink = document.getElementById('galleryLightboxOpen');
+    if (dlBtn) {
+        dlBtn.onclick = () => downloadImage(src, (caption ? caption.replace(/\s+/g, '_') : 'image') + '.png');
+    }
+    if (openLink) {
+        openLink.href = src;
+    }
+    modal.classList.remove('hidden');
+    modal.setAttribute('aria-hidden', 'false');
+};
+
+function closeGalleryLightbox() {
+    const modal = document.getElementById('galleryLightbox');
+    const img = document.getElementById('galleryLightboxImage');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.setAttribute('aria-hidden', 'true');
+    if (img) img.src = '';
+}
+
+// Small helper to escape single quotes in names used inside onclick strings
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
+
+// Lightbox event wiring
+document.addEventListener('DOMContentLoaded', () => {
+    const lbClose = document.getElementById('galleryLightboxClose');
+    const lbBackdrop = document.getElementById('galleryLightboxBackdrop');
+    if (lbClose) lbClose.addEventListener('click', closeGalleryLightbox);
+    if (lbBackdrop) lbBackdrop.addEventListener('click', closeGalleryLightbox);
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeGalleryLightbox();
+    });
+});
+
+// Download helper
+window.downloadImage = async function (url, filename = 'image.png') {
+    try {
+        // Show quick user feedback
+        showMessage('Preparing download...', 'info');
+        const res = await fetch(url, { mode: 'cors' });
+        if (!res.ok) throw new Error('Failed to fetch image');
+        const blob = await res.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(blobUrl);
+        showMessage('Download started', 'success');
+    } catch (error) {
+        console.error('Download failed:', error);
+        showMessage('Download failed: ' + (error.message || error), 'error');
+    }
+};
 
 // (contract tx counts removed)
 

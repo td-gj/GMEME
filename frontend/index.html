@@ -153,6 +153,7 @@
       <button class="tab" data-tab="mint">Mint Fighter</button>
       <button class="tab" data-tab="leaderboard">Leaderboard</button>
       <button class="tab" data-tab="swap">SWAP $GMEME</button>
+      <button class="tab" data-tab="gallery">Gallery</button>
     </div>
 
     <!-- Tab Content Area -->
@@ -179,14 +180,13 @@
               </thead>
               <tbody id="leaderboardList">
                 <!-- JS will populate this -->
-                <tr>
-                  <td colspan="4" class="text-center" style="padding: 2rem;">Loading rankings...</td>
-                </tr>
               </tbody>
             </table>
           </div>
         </div>
       </div>
+
+    <!-- Gallery (moved below Swap) -->
 
 
       <!-- 1. Active Battles (ARENA) - Default -->
@@ -229,7 +229,7 @@
           <div class="form-group">
             <label class="form-label">Select Your Fighter</label>
             <select id="battleNftSelect" class="form-input" style="background: rgba(0,0,0,0.5);">
-              <option value="">Loading fighters...</option>
+              <option value="">--</option>
             </select>
           </div>
 
@@ -313,6 +313,37 @@
           <button id="swapBtn" class="btn btn-primary" style="width: 100%;">Buy GMEME</button>
         </div>
       </div>
+
+    <!-- Gallery -->
+    <div id="gallery-content" class="tab-content hidden">
+      <h2 class="card-title">NFT Gallery</h2>
+      <div style="display:flex; gap:8px; align-items:center; justify-content:flex-end; margin-bottom: 1rem;">
+        <label for="galleryMode" style="color:var(--text-muted); font-weight:600; font-size:0.95rem; margin-right:6px;">Display</label>
+        <select id="galleryMode" class="form-input" style="width: 160px; padding:6px 10px;">
+          <option value="random">Random (reshuffle hourly)</option>
+          <option value="full">Full (by ID)</option>
+        </select>
+      </div>
+      <div id="galleryGrid" class="gallery-grid">
+        <!-- Gallery images will be injected here -->
+      </div>
+    </div>
+
+    <!-- Lightbox for gallery -->
+    <div id="galleryLightbox" class="modal hidden" aria-hidden="true" role="dialog" aria-modal="true">
+      <div class="modal-backdrop" id="galleryLightboxBackdrop"></div>
+      <div class="modal-card" style="max-width: 900px; width: calc(100% - 40px);">
+        <button class="modal-close" id="galleryLightboxClose" aria-label="Close">✕</button>
+      <div id="galleryLightboxContent" style="text-align:center;">
+          <img id="galleryLightboxImage" src="" alt="" style="max-width:100%; border-radius:12px; margin-bottom:1rem;">
+          <div id="galleryLightboxCaption" style="color:var(--text-muted); font-weight:600; margin-bottom:8px;"></div>
+          <div style="display:flex; gap:8px; justify-content:center;">
+            <button id="galleryLightboxDownload" class="btn btn-primary">Download</button>
+            <a id="galleryLightboxOpen" class="btn btn-secondary" target="_blank" rel="noopener">Open</a>
+          </div>
+        </div>
+      </div>
+    </div>
 
 
     </div>
