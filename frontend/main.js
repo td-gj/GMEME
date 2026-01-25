@@ -1281,8 +1281,8 @@ window.viewBattleDetail = async function (id) {
     detailCard.innerHTML = `
         <div style="text-align: center; margin-bottom: 2rem;">
             <h2 style="font-size: 2.5rem; margin-bottom: 0.5rem; background: linear-gradient(to right, #8b5cf6, #ec4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Battle Arena #${battle.id}</h2>
-            <div style="font-size: 1.2rem; font-weight: bold; color: ${isActive ? '#10b981' : '#ef4444'}">
-                ${isActive ? '🔥 BATTLE IN PROGRESS' : '🏁 BATTLE ENDED'}
+            <div id="battleStatus" style="font-size: 1.2rem; font-weight: bold; color: ${isActive ? '#10b981' : '#ef4444'}">
+                ${isActive ? '🔥 BATTLE IN PROGRESS' : 'BATTLE ENDED'}
             </div>
             <div style="color: var(--text-muted); margin-top: 0.5rem;">Started: ${new Date(battle.startTime * 1000).toLocaleString()}</div>
         </div>
@@ -1387,7 +1387,17 @@ function updateAllTimers() {
             if (battle) {
                 const timeLeft = Math.max(0, (battle.startTime + 86400) - now);
                 const statusLabel = document.querySelector('#battle-detail-card [style*="color:"]');
-                if (statusLabel) {
+                // Prefer explicit element by id to control coloring reliably
+                const explicitStatus = document.getElementById('battleStatus');
+                if (explicitStatus) {
+                    if (timeLeft > 0 && !battle.ended) {
+                        explicitStatus.textContent = `🔥 BATTLE IN PROGRESS | Ends in ${Math.floor(timeLeft / 3600)}h ${Math.floor((timeLeft % 3600) / 60)}m ${timeLeft % 60}s`;
+                        explicitStatus.style.color = '#10b981';
+                    } else {
+                        explicitStatus.textContent = '🏁 BATTLE ENDED';
+                        explicitStatus.style.color = '#ef4444';
+                    }
+                } else if (statusLabel) {
                     if (timeLeft > 0 && !battle.ended) {
                         statusLabel.textContent = `🔥 BATTLE IN PROGRESS | Ends in ${Math.floor(timeLeft / 3600)}h ${Math.floor((timeLeft % 3600) / 60)}m ${timeLeft % 60}s`;
                     } else {
