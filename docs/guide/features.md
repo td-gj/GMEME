@@ -85,4 +85,4 @@ Even if you don't fight, you can earn.
 - **Reward**: If your choice wins, you share a pool of GMEME tokens distributed to correct voters.
 
 ---
-*Ready to fight? [Go to Game](http://localhost:5173)*
+*Ready to fight? [Go to Game](https://www.gmeme-battle.com/)*

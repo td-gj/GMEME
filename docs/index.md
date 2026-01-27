@@ -11,7 +11,7 @@ hero:
   actions:
     - theme: brand
       text: Play Now
-      link: /
+      link: https://www.gmeme-battle.com/
     - theme: alt
       text: Game Features
       link: /guide/features
