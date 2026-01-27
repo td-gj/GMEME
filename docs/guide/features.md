@@ -28,7 +28,6 @@ Experience battle mode without spending any GMEME! Perfect for new players to pr
 - **Entry Fee**: **FREE** (No GMEME required to join)
 - **Requirement**: You must hold at least **1 GMEME** in your wallet to participate (anti-spam protection)
 - **Daily Limit**: **3 battles per day** per wallet
-- **Battle Duration**: **5 Minutes** (Quick battles!)
 - **Matchmaking**: Same as premium battles - auto-paired with available opponents
 
 ### Rewards
