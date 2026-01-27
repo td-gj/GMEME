@@ -10,25 +10,25 @@ hero:
     alt: GMEME Logo
   actions:
     - theme: brand
-      text: 🎮 Play Now
+      text: Play Now
       link: /
     - theme: alt
-      text: 📖 Game Features
+      text: Game Features
       link: /guide/features
     - theme: alt
-      text: 📜 Smart Contracts
+      text: Smart Contracts
       link: /contracts/overview
 
 features:
-  - title: 🔥 Mint & Fight
+  - title: Mint & Fight
     details: Create unique 8-bit NFT Fighters, enter the Arena, and battle real players for crypto rewards.
     icon: 🥊
-  - title: ⚡ Polygon Mainnet
+  - title: Polygon Mainnet
     details: Experience fast, cheap, and secure battles on the Polygon PoS network. No more testnet play money!
     icon:
       src: /pol-logo.png
       alt: Polygon Logo
-  - title: 💎 Play-to-Earn
+  - title: Play-to-Earn
     details: Winners take 90% of the battle pool. Community voters earn passive rewards.
     icon: 💰
 ---

@@ -148,12 +148,14 @@
     <!-- Navigation Tabs -->
     <div class="tabs">
       <button class="tab active" data-tab="activebattles">Live Arena</button>
-      <button class="tab" data-tab="mynfts">My Collection</button>
-      <button class="tab" data-tab="battle">Join Queue</button>
+      <button class="tab" data-tab="gmebattle-arena">Live GME</button>
+      <button class="tab" data-tab="mynfts">My Fighters</button>
+      <button class="tab" data-tab="battle">Join Battle</button>
+      <button class="tab" data-tab="gmebattle">Join GME</button>
       <button class="tab" data-tab="mint">Mint Fighter</button>
-      <button class="tab" data-tab="leaderboard">Leaderboard</button>
-      <button class="tab" data-tab="swap">SWAP $GMEME</button>
-      <button class="tab" data-tab="gallery">Gallery</button>
+      <button class="tab" data-tab="leaderboard">Hall of Fame</button>
+      <button class="tab" data-tab="swap">Token Exchange</button>
+      <button class="tab" data-tab="gallery">NFT Gallery</button>
     </div>
 
     <!-- Tab Content Area -->
@@ -167,7 +169,7 @@
       <!-- 6. Leaderboard -->
       <div id="leaderboard-content" class="tab-content hidden">
         <div class="card">
-          <h2 class="card-title">🏆 Hall of Fame</h2>
+          <h2 class="card-title" style="background: linear-gradient(to right, #a855f7, #ec4899); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">Hall of Fame</h2>
           <div class="table-container" style="overflow-x: auto;">
             <table style="width: 100%; border-collapse: collapse; text-align: left;">
               <thead>
@@ -192,7 +194,7 @@
       <!-- 1. Active Battles (ARENA) - Default -->
       <div id="activebattles-content" class="tab-content">
         <div class="battle-header" style="display: flex; justify-content: space-between; align-items: center;">
-          <h2 class="card-title" style="margin:0">Live Battles</h2>
+          <span></span>
           <button class="btn btn-secondary" onclick="loadActiveBattles()">Refresh Arena</button>
         </div>
 
@@ -200,6 +202,18 @@
 
         <div id="battleList" class="battle-list">
           <!-- Battles will be loaded here; full-page loader will display during fetch -->
+        </div>
+      </div>
+
+      <!-- 1.5 GME Battle Arena -->
+      <div id="gmebattle-arena-content" class="tab-content hidden">
+        <div class="battle-header" style="display: flex; justify-content: space-between; align-items: center;">
+          <h2 class="card-title" style="margin:0; background: linear-gradient(to right, #22c55e, #3b82f6); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">GME Battles</h2>
+          <button class="btn btn-secondary" onclick="loadGmeBattleArena()">Refresh Arena</button>
+        </div>
+
+        <div id="gmeBattleList" class="battle-list">
+          <!-- GME Battles will be loaded here -->
         </div>
       </div>
 
@@ -213,16 +227,16 @@
 
       <!-- 2. My NFTs -->
       <div id="mynfts-content" class="tab-content hidden">
-        <h2 class="card-title">My Fighters Collection</h2>
+        <h2 class="card-title" style="margin:0; background: linear-gradient(to right, #a855f7, #ec4899); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">My Fighters</h2>
         <div id="nftGrid" class="nft-grid">
           <!-- NFT grid will be populated here; full-page loader will display during fetch -->
         </div>
       </div>
 
-      <!-- 3. Join Battle (Queue) -->
+      <!-- 3. Join Battle (Queue) - Premium Mode -->
       <div id="battle-content" class="tab-content hidden">
         <div class="card">
-          <h2 class="card-title">Join the Battle Queue</h2>
+          <h2 class="card-title" style="background: linear-gradient(to right, #a855f7, #ec4899); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">Join Battle</h2>
           <p style="color: var(--text-muted); margin-bottom: 2rem;">Select a fighter to enter the queue. If a player
             is waiting, you start instantly!</p>
 
@@ -249,14 +263,61 @@
             </div>
           </div>
 
-          <button id="joinBattleBtn" class="btn btn-primary" style="width: 100%;">Enter Queue (10 GMEME)</button>
+          <button id="joinBattleBtn" class="btn btn-primary" style="width: 100%;" onclick="handleJoinBattle()">Enter Queue (10 GMEME)</button>
         </div>
       </div>
 
-      <!-- 4. Mint -->
+      <!-- 4. GME Battles -->
+      <div id="gmebattle-content" class="tab-content hidden">
+        <div class="card">
+          <div style="text-align: center; margin-bottom: 1.5rem;">
+            <h2 class="card-title" style="background: linear-gradient(to right, #a855f7, #ec4899); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">Free Battle Arena</h2>
+            <p style="color: var(--text-muted);">No entry fee! Hold 1 GMEME to participate.</p>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Select Your Fighter</label>
+            <select id="gmeBattleNftSelect" class="form-input" style="background: rgba(0,0,0,0.5);">
+              <option value="">-- Select NFT --</option>
+            </select>
+          </div>
+
+          <div class="battle-info"
+            style="margin: 2rem 0; padding: 1.5rem; background: linear-gradient(135deg, rgba(34,197,94,0.1), rgba(59,130,246,0.1)); border: 1px solid rgba(34,197,94,0.3); border-radius: 12px;">
+            <div class="stat-row" style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+              <span class="text-muted">Entry Fee:</span>
+              <span class="text-success">FREE</span>
+            </div>
+            <div class="stat-row" style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+              <span class="text-muted">Requirement:</span>
+              <span class="text-warning">Hold 1 GMEME</span>
+            </div>
+            <div class="stat-row" style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+              <span class="text-muted">Winner Reward:</span>
+              <span class="text-success">10 GME</span>
+            </div>
+            <div class="stat-row" style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+              <span class="text-muted">Voter Win Reward:</span>
+              <span class="text-info">0.1 GME</span>
+            </div>
+            <div class="stat-row" style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+              <span class="text-muted">Daily Limit:</span>
+              <span class="text-white">3 battles/day</span>
+            </div>
+            <div class="stat-row" style="display: flex; justify-content: space-between;">
+              <span class="text-muted">Duration:</span>
+              <span class="text-white">24 Hours</span>
+            </div>
+          </div>
+
+          <button id="joinGmeBattleBtn" class="btn btn-success" style="width: 100%; background: linear-gradient(135deg, #22c55e, #3b82f6);" onclick="handleJoinGmeBattle()">Join Free Battle</button>
+        </div>
+      </div>
+
+      <!-- 5. Mint -->
       <div id="mint-content" class="tab-content hidden">
         <div class="card">
-          <h2 class="card-title">Summon New Fighter</h2>
+          <h2 class="card-title" style="background: linear-gradient(to right, #a855f7, #ec4899); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">Mint Fighter</h2>
           <p style="color: var(--text-muted); margin-bottom: 1.5rem;">
             Mint Cost: <strong style="color: var(--primary)">1 GMEME</strong> | Initial ELO: <strong>0</strong>
           </p>
@@ -287,7 +348,7 @@
       <div id="swap-content" class="tab-content hidden">
         <div class="card" style="max-width: 500px; margin: 0 auto;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-            <h2 class="card-title" style="margin: 0;">Token Exchange</h2>
+            <h2 class="card-title" style="margin: 0; background: linear-gradient(to right, #a855f7, #ec4899); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">Token Exchange</h2>
             <button id="switchSwapDirectionBtn" class="btn btn-secondary" style="padding: 0.5rem 1rem;">Switch</button>
           </div>
 
@@ -316,7 +377,7 @@
 
     <!-- Gallery -->
     <div id="gallery-content" class="tab-content hidden">
-      <h2 class="card-title">NFT Gallery</h2>
+      <h2 class="card-title" style="background: linear-gradient(to right, #a855f7, #ec4899); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">NFT Gallery</h2>
       <div style="display:flex; gap:8px; align-items:center; justify-content:flex-end; margin-bottom: 1rem;">
         <label for="galleryMode" style="color:var(--text-muted); font-weight:600; font-size:0.95rem; margin-right:6px;">Display</label>
         <select id="galleryMode" class="form-input" style="width: 160px; padding:6px 10px;">
@@ -348,7 +409,9 @@
 
     </div>
   </div>
+  <script type="module" src="/gmeBattle.js"></script>
   <script type="module" src="/main.js"></script>
+
 </body>
 
 </html>

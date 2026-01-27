@@ -51,6 +51,54 @@ window.handleImageError = function (img) {
     }
 };
 
+// Premium Battle Function
+async function handleJoinBattle() {
+    if (!signer) {
+        showMessage('Please connect your wallet first', 'error');
+        return;
+    }
+
+    const tokenId = document.getElementById('battleNftSelect').value;
+    if (!tokenId) {
+        showMessage('Please select an NFT', 'error');
+        return;
+    }
+
+    try {
+        showMessage('Approving GMEME spending...', 'info');
+
+        const allowance = await contracts.token.allowance(userAddress, CONTRACTS.BATTLE);
+        const betAmount = ethers.parseEther('10');
+
+        // Check GMEME balance
+        const balance = await contracts.token.balanceOf(userAddress);
+        if (balance < betAmount) {
+            showMessage('Insufficient GMEME! Need 10 GMEME to join.', 'error');
+            return;
+        }
+
+        if (allowance < betAmount) {
+            const approveTx = await contracts.token.approve(CONTRACTS.BATTLE, ethers.parseEther('10000'), {
+                gasLimit: 100000
+            });
+            await approveTx.wait();
+        }
+
+        showMessage('Joining battle...', 'info');
+        const tx = await contracts.battle.joinBattle(tokenId, {
+            gasLimit: 500000
+        });
+        showMessage('Transaction submitted! Waiting for confirmation...', 'info');
+        await tx.wait();
+        showMessage('Successfully joined battle queue!', 'success');
+        await updateBalances();
+
+    } catch (error) {
+        console.error('Join battle error:', error);
+        showMessage('Failed to join battle: ' + (error.reason || error.message), 'error');
+    }
+}
+
 // Initialize app
 document.addEventListener('DOMContentLoaded', () => {
     initializeEventListeners();
@@ -60,12 +108,22 @@ document.addEventListener('DOMContentLoaded', () => {
     // Check hash for direct link or default tab
     setTimeout(() => {
         const hash = window.location.hash;
-        if (hash.startsWith('#battle/')) {
+        if (hash.startsWith('#gmebattle/')) {
+            const id = hash.split('/')[1];
+            switchTab('gmebattle-arena');
+            window.viewGmeBattleDetail(id);
+        } else if (hash.startsWith('#battle/')) {
             const id = hash.split('/')[1];
             switchTab('activebattles');
             viewBattleDetail(id);
         } else {
-            switchTab('activebattles');
+            // Restore last visited tab or default to activebattles
+            const lastTab = localStorage.getItem('lastTab');
+            if (lastTab && ['activebattles', 'gmebattle-arena', 'mynfts', 'battle', 'gmebattle', 'mint', 'leaderboard', 'swap', 'gallery'].includes(lastTab)) {
+                switchTab(lastTab);
+            } else {
+                switchTab('activebattles');
+            }
         }
     }, 500);
 
@@ -99,9 +157,9 @@ function initializeEventListeners() {
     });
     document.getElementById('nftImageFile').addEventListener('change', handleImageUpload);
     document.getElementById('mintBtn').addEventListener('click', handleMint);
-
-    // Battle
-    document.getElementById('joinBattleBtn').addEventListener('click', handleJoinBattle);
+    
+    // Expose functions to window for onclick handlers
+    window.handleJoinBattle = handleJoinBattle;
 
     // Docs modal (in-app)
     const docsBtn = document.getElementById('docsBtn');
@@ -171,11 +229,19 @@ async function connectWallet() {
         signer = await provider.getSigner();
         userAddress = accounts[0];
 
+        // Expose to window for other modules
+        window.signer = signer;
+        window.userAddress = userAddress;
+
         // Initialize contracts
         contracts.token = new ethers.Contract(CONTRACTS.TOKEN, ABIS.TOKEN, signer);
         contracts.nft = new ethers.Contract(CONTRACTS.NFT, ABIS.NFT, signer);
         contracts.swap = new ethers.Contract(CONTRACTS.SWAP, ABIS.SWAP, signer);
         contracts.battle = new ethers.Contract(CONTRACTS.BATTLE, ABIS.BATTLE, signer);
+        contracts.gmeBattle = new ethers.Contract(CONTRACTS.GME_BATTLE, ABIS.GME_BATTLE, signer);
+
+        // Expose to window for other modules
+        window.contracts = contracts;
 
         // Update UI
         updateWalletUI();
@@ -310,6 +376,9 @@ async function retryAsync(fn, attempts = 3, delayMs = 1000) {
 
 // Tab Switching
 function switchTab(tabName) {
+    // Save last visited tab
+    localStorage.setItem('lastTab', tabName);
+    
     // Update tab buttons
     document.querySelectorAll('.tab').forEach(tab => {
         tab.classList.remove('active');
@@ -329,6 +398,10 @@ function switchTab(tabName) {
         loadActiveBattles();
     } else if (tabName === 'battle') {
         loadBattleNFTSelect();
+    } else if (tabName === 'gmebattle') {
+        if (window.loadGmeBattleNFTSelect) window.loadGmeBattleNFTSelect();
+    } else if (tabName === 'gmebattle-arena') {
+        if (window.loadGmeBattleArena) window.loadGmeBattleArena();
     } else if (tabName === 'leaderboard') {
         loadLeaderboard();
     } else if (tabName === 'gallery') {
@@ -579,13 +652,13 @@ async function handleImageUpload(event) {
 
         // Store file for later upload (when minting)
         uploadedImageHash = file; // Store the File object
-        document.getElementById('uploadStatus').textContent = '✅ Image ready to upload';
+        document.getElementById('uploadStatus').textContent = 'Image ready to upload';
         showMessage('Image selected! Will upload when you mint.', 'success');
 
     } catch (error) {
         console.error('Image selection error:', error);
         showMessage('Failed to select image: ' + error.message, 'error');
-        document.getElementById('uploadStatus').textContent = '❌ Selection failed';
+        document.getElementById('uploadStatus').textContent = 'Selection failed';
         uploadedImageHash = null;
     }
 }
@@ -810,7 +883,7 @@ async function loadMyNFTs() {
 
                     // Multiple IPFS gateways (fallback if one fails)
                     const gateways = [
-                        'https://dweb.link/ipfs/',         // Verified Working ✅
+                        'https://dweb.link/ipfs/',         // Verified Working
                         'https://cloudflare-ipfs.com/ipfs/', // Cloudflare (Full domain)
                         'https://ipfs.io/ipfs/',           // Standard
                         'https://gateway.pinata.cloud/ipfs/' // Pinata default
@@ -1031,54 +1104,6 @@ async function loadBattleNFTSelect() {
     }
 }
 
-async function handleJoinBattle() {
-    if (!signer) {
-        showMessage('Please connect your wallet first', 'error');
-        return;
-    }
-
-    const tokenId = document.getElementById('battleNftSelect').value;
-    if (!tokenId) {
-        showMessage('Please select an NFT', 'error');
-        return;
-    }
-
-    try {
-        showMessage('Approving GMEME spending...', 'info');
-
-        const allowance = await contracts.token.allowance(userAddress, CONTRACTS.BATTLE);
-        const betAmount = ethers.parseEther('10');
-
-        // Check GMEME balance
-        const balance = await contracts.token.balanceOf(userAddress);
-        if (balance < betAmount) {
-            showMessage(`Insufficient GMEME! Need 10 GMEME to join.`, 'error');
-            return;
-        }
-
-        if (allowance < betAmount) {
-            const approveTx = await contracts.token.approve(CONTRACTS.BATTLE, ethers.parseEther('10000'), {
-                gasLimit: 100000
-            });
-            await approveTx.wait();
-        }
-
-        showMessage('Joining battle...', 'info');
-        const tx = await contracts.battle.joinBattle(tokenId, {
-            gasLimit: 500000 // Increase gas limit
-        });
-        showMessage('Transaction submitted! Waiting for confirmation...', 'info');
-        await tx.wait();
-
-        showMessage('Successfully joined battle queue!', 'success');
-        await updateBalances();
-
-    } catch (error) {
-        console.error('Join battle error:', error);
-        showMessage('Failed to join battle: ' + (error.reason || error.message), 'error');
-    }
-}
-
 // My Live Arena removed per user request.
 
 async function loadActiveBattles() {
@@ -1276,13 +1301,13 @@ window.viewBattleDetail = async function (id) {
     const timeLeft = Math.max(0, (battle.startTime + 86400) - now);
     const isActive = !battle.ended && timeLeft > 0;
 
-    const fallbackSvg = `data:image/svg+xml,${encodeURIComponent('<svg width="280" height="280" xmlns="http://www.w3.org/2000/svg"><rect width="280" height="280" fill="#333"/><text x="50%" y="50%" font-family="Arial" font-size="24" fill="white" text-anchor="middle" dominant-baseline="middle">?</text></svg>')}`;
+    const fallbackSvg = 'data:image/svg+xml,' + encodeURIComponent('<svg width="280" height="280" xmlns="http://www.w3.org/2000/svg"><rect width="280" height="280" fill="#333"/><text x="50%" y="50%" font-family="Arial" font-size="24" fill="white" text-anchor="middle" dominant-baseline="middle">?</text></svg>');
 
     detailCard.innerHTML = `
         <div style="text-align: center; margin-bottom: 2rem;">
-            <h2 style="font-size: 2.5rem; margin-bottom: 0.5rem; background: linear-gradient(to right, #8b5cf6, #ec4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Battle Arena #${battle.id}</h2>
+            <h2 style="font-size: 2.5rem; margin-bottom: 0.5rem; background: linear-gradient(to right, #8b5cf6, #ec4899); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">Battle Arena #${battle.id}</h2>
             <div id="battleStatus" style="font-size: 1.2rem; font-weight: bold; color: ${isActive ? '#10b981' : '#ef4444'}">
-                ${isActive ? '🔥 BATTLE IN PROGRESS' : 'BATTLE ENDED'}
+                ${isActive ? 'BATTLE IN PROGRESS' : 'BATTLE ENDED'}
             </div>
             <div style="color: var(--text-muted); margin-top: 0.5rem;">Started: ${new Date(battle.startTime * 1000).toLocaleString()}</div>
         </div>
@@ -1338,7 +1363,7 @@ window.viewBattleDetail = async function (id) {
         ` : `
             <div class="text-center">
                  <button class="btn btn-secondary" onclick="handleEndBattle(${battle.id})" ${battle.ended ? 'disabled' : ''}>
-                  ${battle.ended ? '✅ Rewards Distributed' : '🎁 End Battle & Claim Rewards'}
+                  ${battle.ended ? 'Rewards Distributed' : 'End Battle & Claim Rewards'}
                 </button>
             </div>
         `}
@@ -1370,7 +1395,7 @@ function updateAllTimers() {
             // If timer just hit zero, we might want to change status text
             if (timeLeft === 0 && isActive) {
                 const statusEl = document.querySelector(`#battle-card-${battle.id} .battle-status`);
-                if (statusEl) statusEl.textContent = '⏱️ ENDED';
+                if (statusEl) statusEl.textContent = 'ENDED';
                 // Trigger refresh to get final state
                 setTimeout(loadActiveBattles, 2000);
             }
@@ -1391,17 +1416,17 @@ function updateAllTimers() {
                 const explicitStatus = document.getElementById('battleStatus');
                 if (explicitStatus) {
                     if (timeLeft > 0 && !battle.ended) {
-                        explicitStatus.textContent = `🔥 BATTLE IN PROGRESS | Ends in ${Math.floor(timeLeft / 3600)}h ${Math.floor((timeLeft % 3600) / 60)}m ${timeLeft % 60}s`;
+                        explicitStatus.textContent = `BATTLE IN PROGRESS | Ends in ${Math.floor(timeLeft / 3600)}h ${Math.floor((timeLeft % 3600) / 60)}m ${timeLeft % 60}s`;
                         explicitStatus.style.color = '#10b981';
                     } else {
-                        explicitStatus.textContent = '🏁 BATTLE ENDED';
+                        explicitStatus.textContent = 'BATTLE ENDED';
                         explicitStatus.style.color = '#ef4444';
                     }
                 } else if (statusLabel) {
                     if (timeLeft > 0 && !battle.ended) {
-                        statusLabel.textContent = `🔥 BATTLE IN PROGRESS | Ends in ${Math.floor(timeLeft / 3600)}h ${Math.floor((timeLeft % 3600) / 60)}m ${timeLeft % 60}s`;
+                        statusLabel.textContent = `BATTLE IN PROGRESS | Ends in ${Math.floor(timeLeft / 3600)}h ${Math.floor((timeLeft % 3600) / 60)}m ${timeLeft % 60}s`;
                     } else {
-                        statusLabel.textContent = '🏁 BATTLE ENDED';
+                        statusLabel.textContent = 'BATTLE ENDED';
                         statusLabel.style.color = '#ef4444';
                     }
                 }
@@ -1439,14 +1464,14 @@ function displayBattles(battles) {
         const winner = p1Votes >= p2Votes ? 1 : 2;
         const winnerTokenId = winner === 1 ? battle.p1TokenId : battle.p2TokenId;
 
-        const fallbackSvg = `data:image/svg+xml,${encodeURIComponent('<svg width="280" height="280" xmlns="http://www.w3.org/2000/svg"><rect width="280" height="280" fill="#333"/><text x="50%" y="50%" font-family="Arial" font-size="24" fill="white" text-anchor="middle" dominant-baseline="middle">?</text></svg>')}`;
+        const fallbackSvg = 'data:image/svg+xml,' + encodeURIComponent('<svg width="280" height="280" xmlns="http://www.w3.org/2000/svg"><rect width="280" height="280" fill="#333"/><text x="50%" y="50%" font-family="Arial" font-size="24" fill="white" text-anchor="middle" dominant-baseline="middle">?</text></svg>');
 
         return `
       <div class="battle-card" id="battle-card-${battle.id}">
         <div class="battle-header">
           <div class="battle-id">#${battle.id}</div>
           <div class="battle-status ${isActive ? 'status-active' : 'status-ended'}">
-            ${isActive ? '🔥 LIVE' : battle.ended ? `🏆 Winner: ${winner === 1 ? battle.p1Name : battle.p2Name}` : '⏱️ ENDED'}
+            ${isActive ? 'LIVE' : battle.ended ? `Winner: ${winner === 1 ? battle.p1Name : battle.p2Name}` : 'ENDED'}
           </div>
           <button class="btn btn-secondary" style="padding: 0.2rem 0.5rem; font-size: 0.8rem;" onclick="viewBattleDetail('${battle.id}')">↗</button>
         </div>
@@ -1492,7 +1517,7 @@ function displayBattles(battles) {
         ` : `
           <div class="text-center mt-2">
             <button class="btn btn-secondary" onclick="handleEndBattle(${battle.id})" ${battle.ended ? 'disabled' : ''}>
-              ${battle.ended ? 'Already Claimed' : '🎁 End & Claim'}
+              ${battle.ended ? 'Already Claimed' : 'End & Claim'}
             </button>
           </div>
         `}
@@ -1568,9 +1593,15 @@ async function loadPlatformStats() {
         if (!contracts.battle) {
             contracts.battle = new ethers.Contract(CONTRACTS.BATTLE, ABIS.BATTLE, provider);
         }
+        if (!contracts.gmeBattle) {
+            contracts.gmeBattle = new ethers.Contract(CONTRACTS.GME_BATTLE, ABIS.GME_BATTLE, provider);
+        }
         if (!contracts.token) {
             contracts.token = new ethers.Contract(CONTRACTS.TOKEN, ABIS.TOKEN, provider);
         }
+
+        // Expose to window for other modules
+        window.contracts = contracts;
 
         // Show global loader while fetching stats
         const pageLoader = document.getElementById('pageLoader');
@@ -2306,6 +2337,11 @@ function showMessage(text, type = 'info') {
     }, 5000);
 }
 
+// Expose functions to window for other modules
+window.showMessage = showMessage;
+window.updateBalances = updateBalances;
+window.ethers = ethers;
+
 // Initialize platform stats on page load
 document.addEventListener('DOMContentLoaded', () => {
     // Load stats immediately
@@ -2358,7 +2394,7 @@ window.handleVote = async function (battleId, fighterIndex) {
     showMessage('Checking eligibility...', 'info');
     const hasEnough = await checkVoteBalance(userAddress);
     if (!hasEnough) {
-        showMessage('⚠️ Please hold at least 1 GMEME to vote!', 'error');
+        showMessage('Please hold at least 1 GMEME to vote!', 'error');
         return;
     }
 

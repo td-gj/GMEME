@@ -571,17 +571,18 @@ img.logo {
 }
 
 .tabs .tab.active {
-  background: linear-gradient(135deg, rgba(139,92,246,0.16), rgba(236,72,153,0.12));
+  background: rgba(255, 255, 255, 0.08);
   color: white;
   transform: translateY(-4px);
-  box-shadow: 0 12px 30px rgba(11,7,27,0.55);
-  border: 1px solid rgba(255,255,255,0.04);
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.15), 0 8px 24px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 .tabs .tab:hover {
-  color: var(--text-main);
+  color: white;
   transform: translateY(-2px);
-  background: rgba(255,255,255,0.02);
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.08);
 }
 
 @media (max-width: 900px) {
@@ -691,17 +692,18 @@ img.logo {
 }
 
 .tab:hover {
-  color: var(--text-main);
-  background: var(--bg-glass-hover);
+  color: white;
+  background: rgba(255, 255, 255, 0.04);
   transform: translateY(-2px);
 }
 
 .tab.active {
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  background: rgba(255, 255, 255, 0.08);
   color: white;
-  box-shadow: var(--shadow-glow);
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.15), 0 8px 24px rgba(0, 0, 0, 0.3);
   transform: translateY(-2px);
   font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 .tab.active::before {
@@ -711,11 +713,11 @@ img.logo {
   left: -2px;
   right: -2px;
   bottom: -2px;
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  background: white;
   border-radius: inherit;
   z-index: -1;
-  filter: blur(8px);
-  opacity: 0.3;
+  filter: blur(12px);
+  opacity: 0.15;
 }
 
 /* Mint Progress Card */
@@ -1850,66 +1852,41 @@ img.logo {
   border-radius: var(--radius-lg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--shadow-card);
+  border-left: 3px solid var(--glass-border);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
   z-index: 1000;
   animation: slideInFromRight 0.5s ease-out;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: var(--space-md);
   font-family: var(--font-main);
   font-weight: 500;
   line-height: 1.5;
+  background: rgba(20, 20, 28, 0.98);
 }
 
 .message::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  width: 4px;
-  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+  display: none;
 }
 
 .message-success {
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05));
-  border-color: rgba(16, 185, 129, 0.3);
-}
-
-.message-success::before {
-  background: var(--success);
-  box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+  border-left-color: var(--success);
+  background: rgba(20, 20, 28, 0.98);
 }
 
 .message-error {
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05));
-  border-color: rgba(239, 68, 68, 0.3);
-}
-
-.message-error::before {
-  background: var(--danger);
-  box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+  border-left-color: var(--danger);
+  background: rgba(20, 20, 28, 0.98);
 }
 
 .message-info {
-  background: linear-gradient(135deg, rgba(6, 182, 212, 0.1), rgba(6, 182, 212, 0.05));
-  border-color: rgba(6, 182, 212, 0.3);
-}
-
-.message-info::before {
-  background: var(--accent);
-  box-shadow: 0 0 10px rgba(6, 182, 212, 0.5);
+  border-left-color: var(--accent);
+  background: rgba(20, 20, 28, 0.98);
 }
 
 .message-warning {
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05));
-  border-color: rgba(245, 158, 11, 0.3);
-}
-
-.message-warning::before {
-  background: var(--warning);
-  box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
+  border-left-color: var(--warning);
+  background: rgba(20, 20, 28, 0.98);
 }
 
 .message-icon {
