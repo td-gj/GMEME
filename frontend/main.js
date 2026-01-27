@@ -117,13 +117,8 @@ document.addEventListener('DOMContentLoaded', () => {
             switchTab('activebattles');
             viewBattleDetail(id);
         } else {
-            // Restore last visited tab or default to activebattles
-            const lastTab = localStorage.getItem('lastTab');
-            if (lastTab && ['activebattles', 'gmebattle-arena', 'mynfts', 'battle', 'gmebattle', 'mint', 'leaderboard', 'swap', 'gallery'].includes(lastTab)) {
-                switchTab(lastTab);
-            } else {
-                switchTab('activebattles');
-            }
+            // Always default to Live Arena (ignore localStorage)
+            switchTab('activebattles');
         }
     }, 500);
 
